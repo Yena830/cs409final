@@ -110,6 +110,23 @@ class ApiClient {
       };
     }
   }
+
+  async patch<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${BASE_URL}${path}`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(body),
+      });
+      
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
 }
 
 export const api = new ApiClient();

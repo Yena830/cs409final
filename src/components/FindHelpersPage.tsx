@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -6,13 +6,24 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Star, MapPin, Clock, DollarSign, Search, Filter, ArrowLeft, Check, Heart, MessageSquare, Shield } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useUser } from "../contexts/UserContext";
+import { toast } from "sonner";
+import { api } from "../lib/api";
+import type { User } from "../contexts/UserContext";
 
 interface FindHelpersPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
 }
 
+// Backend User type for helpers
+interface HelperUser extends User {
+  _id: string;
+  createdAt?: string;
+}
+
+// UI Helper interface for display
 interface Helper {
-  id: number;
+  _id: string;
   name: string;
   image: string;
   rating: number;
@@ -32,112 +43,10 @@ interface Helper {
 export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState<number[]>([]);
-
-  const helpers: Helper[] = [
-    {
-      id: 1,
-      name: "Sarah Mitchell",
-      image: "https://images.unsplash.com/photo-1565069859254-6248c5a4bc67?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmllbmRseSUyMHBlcnNvbiUyMHNtaWxpbmd8ZW58MXx8fHwxNzYyODAwNjg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 4.9,
-      reviewCount: 127,
-      location: "Central Park, NY",
-      services: ["Dog Walking", "Pet Sitting"],
-      hourlyRate: "$20-25",
-      experience: "5 years",
-      availability: "Mon-Fri, Mornings",
-      verified: true,
-      responseTime: "< 1 hour",
-      completedTasks: 340,
-      bio: "Passionate dog lover with 5 years of professional experience. I treat every pet like my own!",
-      specialties: ["Large breeds", "Puppies", "Senior dogs"],
-    },
-    {
-      id: 2,
-      name: "James Parker",
-      image: "https://images.unsplash.com/photo-1603478811096-ed294448b878?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMG1hbiUyMG91dGRvb3J8ZW58MXx8fHwxNzYyODAwNjg2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 5.0,
-      reviewCount: 89,
-      location: "Brooklyn Heights",
-      services: ["Dog Walking", "Pet Boarding", "Training"],
-      hourlyRate: "$25-30",
-      experience: "7 years",
-      availability: "Weekends, Flexible",
-      verified: true,
-      responseTime: "< 30 min",
-      completedTasks: 256,
-      bio: "Certified dog trainer specializing in positive reinforcement. Your furry friend is in great hands!",
-      specialties: ["Training", "Behavioral issues", "Active dogs"],
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      image: "https://images.unsplash.com/photo-1704054006064-2c5b922e7a1e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMHdvbWFuJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzYyNzQ3NzQ2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 4.8,
-      reviewCount: 215,
-      location: "Manhattan, NY",
-      services: ["Cat Feeding", "Pet Sitting", "Small Animals"],
-      hourlyRate: "$18-22",
-      experience: "4 years",
-      availability: "Evenings, Weekends",
-      verified: true,
-      responseTime: "< 2 hours",
-      completedTasks: 412,
-      bio: "Cat enthusiast with experience caring for all types of small pets. Gentle, reliable, and loving!",
-      specialties: ["Cats", "Rabbits", "Guinea pigs"],
-    },
-    {
-      id: 4,
-      name: "Michael Chen",
-      image: "https://images.unsplash.com/photo-1536914307996-bcef0f608f2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXN1YWwlMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjI2ODY4MDR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 4.9,
-      reviewCount: 178,
-      location: "Queens, NY",
-      services: ["Pet Boarding", "Dog Walking", "Pet Sitting"],
-      hourlyRate: "$22-28",
-      experience: "6 years",
-      availability: "Full-time",
-      verified: true,
-      responseTime: "< 1 hour",
-      completedTasks: 521,
-      bio: "Full-time pet care professional with a spacious backyard. Your pets will have the best vacation!",
-      specialties: ["Multi-pet households", "Long-term boarding", "Special needs"],
-    },
-    {
-      id: 5,
-      name: "Jessica Williams",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbnxlbnwxfHx8fDE3NjI3MDE3ODN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 5.0,
-      reviewCount: 94,
-      location: "Upper East Side",
-      services: ["Cat Feeding", "Pet Sitting", "Grooming"],
-      hourlyRate: "$20-24",
-      experience: "3 years",
-      availability: "Mornings, Evenings",
-      verified: true,
-      responseTime: "< 30 min",
-      completedTasks: 187,
-      bio: "Former veterinary assistant who loves pampering pets. Experienced with medications and special care.",
-      specialties: ["Medical care", "Senior pets", "Grooming"],
-    },
-    {
-      id: 6,
-      name: "David Thompson",
-      image: "https://images.unsplash.com/photo-1603478811096-ed294448b878?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMG1hbiUyMG91dGRvb3J8ZW58MXx8fHwxNzYyODAwNjg2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      rating: 4.7,
-      reviewCount: 156,
-      location: "Bronx, NY",
-      services: ["Dog Walking", "Training", "Exercise"],
-      hourlyRate: "$18-23",
-      experience: "4 years",
-      availability: "Afternoons, Weekends",
-      verified: false,
-      responseTime: "< 3 hours",
-      completedTasks: 289,
-      bio: "Active outdoor enthusiast who loves hiking with dogs. Perfect for high-energy pups!",
-      specialties: ["Exercise", "Outdoor activities", "Athletic dogs"],
-    },
-  ];
+  const [favorites, setFavorites] = useState<string[]>([]); // Changed to string[] for _id
+  const [helpers, setHelpers] = useState<Helper[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useUser();
 
   const filters = [
     { id: "all", label: "All Services" },
@@ -148,6 +57,63 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     { id: "training", label: "Training" },
   ];
 
+  // Load helpers from backend
+  useEffect(() => {
+    loadHelpers();
+  }, []);
+
+  const loadHelpers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get<HelperUser[]>('/users/helpers');
+      if (response.success && response.data) {
+        const helperUsers = Array.isArray(response.data) ? response.data : [];
+        // Map backend User data to UI Helper format
+        const mappedHelpers: Helper[] = helperUsers.map((user) => {
+          // Calculate experience from createdAt
+          const yearsSinceJoin = user.createdAt
+            ? Math.floor((new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 365))
+            : 0;
+          const experience = yearsSinceJoin > 0 ? `${yearsSinceJoin} year${yearsSinceJoin > 1 ? 's' : ''}` : 'New helper';
+
+          // Default services based on available task types (could be enhanced)
+          const defaultServices = ["Dog Walking", "Pet Sitting", "Pet Boarding"];
+          
+          // Use profilePhoto or default image
+          const image = user.profilePhoto || 'https://images.unsplash.com/photo-1565069859254-6248c5a4bc67?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
+
+          return {
+            _id: user._id,
+            name: user.name,
+            image,
+            rating: 0, // Default - can be calculated from reviews in future
+            reviewCount: 0, // Default - can be fetched from reviews in future
+            location: "", // Default - could be added to user model later
+            services: defaultServices, // Default - could be derived from task types
+            hourlyRate: "$20-25", // Default - could be added to user model
+            experience,
+            availability: "Flexible", // Default - could be added to user model
+            verified: false, // Default - could be based on account verification
+            responseTime: "< 2 hours", // Default - could be calculated from response times
+            completedTasks: 0, // Default - could be calculated from tasks
+            bio: user.bio || "No bio added yet.",
+            specialties: [], // Default - could be added to user model
+          };
+        });
+        setHelpers(mappedHelpers);
+      } else {
+        toast.error(response.message || "Failed to load helpers");
+        setHelpers([]);
+      }
+    } catch (error) {
+      console.error('Failed to load helpers:', error);
+      toast.error("Failed to load helpers. Please try again.");
+      setHelpers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const filteredHelpers = helpers.filter((helper) => {
     const matchesSearch = helper.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          helper.bio.toLowerCase().includes(searchQuery.toLowerCase());
@@ -156,10 +122,38 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     return matchesSearch && matchesFilter;
   });
 
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (id: string) => {
     setFavorites(prev => 
       prev.includes(id) ? prev.filter(fav => fav !== id) : [...prev, id]
     );
+  };
+
+  const handleViewProfile = (helperId: string) => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to view profiles.");
+      onNavigate("auth");
+      return;
+    }
+    // Navigate to public helper profile with helperId
+    onNavigate("helper-public-profile", { helperId });
+  };
+
+  const handleContact = (helperId: string) => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to contact helpers.");
+      onNavigate("auth");
+      return;
+    }
+    onNavigate("messages", { selectedUserId: helperId });
+  };
+
+  const handleMessage = (helperId: string) => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to message helpers.");
+      onNavigate("auth");
+      return;
+    }
+    onNavigate("messages", { selectedUserId: helperId });
   };
 
   return (
@@ -226,8 +220,12 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
           </Button>
         </div>
 
-        {/* Helpers Grid */}
-        {filteredHelpers.length === 0 ? (
+        {/* Loading State */}
+        {loading ? (
+          <Card className="p-12 text-center">
+            <div className="text-muted-foreground">Loading helpers...</div>
+          </Card>
+        ) : filteredHelpers.length === 0 ? (
           <Card className="p-12 text-center">
             <div className="w-20 h-20 rounded-full bg-secondary/50 flex items-center justify-center mb-4 mx-auto">
               <Search className="w-10 h-10 text-muted-foreground" />
@@ -236,16 +234,18 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
               No helpers found
             </h3>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Try adjusting your search or filters to find the perfect helper for your pet
+              {helpers.length === 0
+                ? "No helpers are currently available. Check back later!"
+                : "Try adjusting your search or filters to find the perfect helper for your pet"}
             </p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredHelpers.map((helper) => (
               <Card
-                key={helper.id}
+                key={helper._id}
                 className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 cursor-pointer group"
-                onClick={() => onNavigate("profile")}
+                onClick={() => handleViewProfile(helper._id)}
               >
                 <div className="p-6">
                   {/* Header with Avatar and Basic Info */}
@@ -275,10 +275,14 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                           </div>
                           <div className="flex items-center gap-1 mb-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span style={{ fontWeight: 600 }}>{helper.rating}</span>
-                            <span className="text-muted-foreground text-sm">
-                              ({helper.reviewCount} reviews)
+                            <span style={{ fontWeight: 600 }}>
+                              {helper.rating > 0 ? helper.rating : '—'}
                             </span>
+                            {helper.reviewCount > 0 && (
+                              <span className="text-muted-foreground text-sm">
+                                ({helper.reviewCount} reviews)
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -287,13 +291,13 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleFavorite(helper.id);
+                            toggleFavorite(helper._id);
                           }}
                           className="hover:bg-primary/10 transition-colors flex-shrink-0"
                         >
                           <Heart
                             className={`w-5 h-5 transition-all ${
-                              favorites.includes(helper.id)
+                              favorites.includes(helper._id)
                                 ? "fill-red-500 text-red-500"
                                 : "text-muted-foreground hover:text-red-500"
                             }`}
@@ -301,10 +305,12 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                         </Button>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                        <MapPin className="w-4 h-4" />
-                        <span>{helper.location}</span>
-                      </div>
+                      {helper.location && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <MapPin className="w-4 h-4" />
+                          <span>{helper.location}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -314,17 +320,19 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                   </p>
 
                   {/* Services Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {helper.services.map((service, idx) => (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        className="border-primary/30 text-primary bg-primary/5"
-                      >
-                        {service}
-                      </Badge>
-                    ))}
-                  </div>
+                  {helper.services.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {helper.services.map((service, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="border-primary/30 text-primary bg-primary/5"
+                        >
+                          {service}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-secondary/20 rounded-lg">
@@ -362,15 +370,17 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                   </div>
 
                   {/* Availability */}
-                  <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-primary" />
-                      <span className="text-sm text-primary" style={{ fontWeight: 600 }}>
-                        Available
-                      </span>
+                  {helper.availability && (
+                    <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <span className="text-sm text-primary" style={{ fontWeight: 600 }}>
+                          Available
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{helper.availability}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{helper.availability}</p>
-                  </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
@@ -378,7 +388,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                       className="flex-1 bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onNavigate("messages", { selectedUserId: helper.id });
+                        handleContact(helper._id);
                       }}
                     >
                       <MessageSquare className="w-4 h-4 mr-2" />
@@ -389,7 +399,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                       className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onNavigate("profile");
+                        handleViewProfile(helper._id);
                       }}
                     >
                       View Profile

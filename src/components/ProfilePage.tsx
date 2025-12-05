@@ -552,10 +552,7 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
                       <div className="aspect-square relative overflow-hidden">
                         <ImageWithFallback
                           src={
-                            pet.photos?.[0] || 
-                            (pet.type === 'dog' 
-                              ? 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1'
-                              : 'https://images.unsplash.com/photo-1574158622682-e40e69881006')
+                            pet.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo"
                           }
                           alt={pet.name}
                           className="w-full h-full object-cover"
@@ -624,11 +621,7 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
             ) : (
               <div className="space-y-4">
                 {myTasks.map((task) => {
-                  const petImage = task.pet?.photos?.[0] || task.image || (
-                    task.pet?.type === 'dog' 
-                      ? 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1'
-                      : 'https://images.unsplash.com/photo-1574158622682-e40e69881006'
-                  );
+                  const petImage = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
                   const applicantsCount = task.applicants?.length || 0;
                   
                   return (

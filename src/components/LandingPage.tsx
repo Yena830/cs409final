@@ -18,7 +18,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
     {
       id: 1,
       title: "Daily Dog Walking",
-      image: "https://images.unsplash.com/photo-1754318245375-5fe3699a286c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZyUyMG91dGRvb3JzfGVufDF8fHx8MTc2MDM5MzEzMnww&ixlib=rb-4.1.0&q=80&w=1080",
+      image: "https://placehold.co/600x400?text=No+Pet+Photo",
       location: "Central Park, NY",
       time: "Morning (8-10am)",
       reward: "$25",
@@ -27,7 +27,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
     {
       id: 2,
       title: "Cat Feeding & Play",
-      image: "https://images.unsplash.com/photo-1623963946854-6c78dd7af766?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjdXRlJTIwY2F0JTIwcG9ydHJhaXR8ZW58MXx8fHwxNzYwMjY4MzgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: "https://placehold.co/600x400?text=No+Pet+Photo",
       location: "Brooklyn Heights",
       time: "Evening (6-8pm)",
       reward: "$20",
@@ -36,7 +36,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
     {
       id: 3,
       title: "Weekend Pet Sitting",
-      image: "https://images.unsplash.com/photo-1633722715463-d30f4f325e24?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkZW4lMjByZXRyaWV2ZXJ8ZW58MXx8fHwxNzYwMjk2MjI1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: "https://placehold.co/600x400?text=No+Pet+Photo",
       location: "Manhattan, NY",
       time: "Sat-Sun (Full Day)",
       reward: "$120",

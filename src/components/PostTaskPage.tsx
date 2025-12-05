@@ -11,6 +11,7 @@ import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import { toast } from "sonner";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import type { User as UserType } from "../contexts/UserContext";
 
 interface PostTaskPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
@@ -30,7 +31,8 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
   const [loading, setLoading] = useState(false);
   const [pets, setPets] = useState<Pet[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
-  const { isOwner, isAuthenticated } = useUser();
+  const [addingOwnerRole, setAddingOwnerRole] = useState(false);
+  const { user, isOwner, isAuthenticated, setUser } = useUser();
 
   // Form data
   const [formData, setFormData] = useState({
@@ -45,13 +47,41 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
     pet: '',
   });
 
+  // Auto-add owner role if user is helper but not owner
   useEffect(() => {
-    // App.tsx handles route protection, so we can safely assume user is authenticated here
-    // Check if user is owner before loading pets
-    if (isOwner()) {
-      loadPets();
-    }
-  }, []);
+    if (!isAuthenticated || !user) return;
+
+    const addOwnerRoleIfNeeded = async () => {
+      // If user is not an owner, automatically add owner role
+      if (!isOwner() && user._id) {
+        setAddingOwnerRole(true);
+        try {
+          const response = await api.post<UserType>('/users/add-role', { role: 'owner' });
+          
+          if (response.success && response.data) {
+            // Update user context with new role
+            setUser(response.data);
+            toast.success("Owner role added! You can now post tasks.");
+            // After adding owner role, load pets
+            loadPets();
+          } else {
+            toast.error(response.message || "Failed to add owner role");
+          }
+        } catch (error) {
+          console.error('Failed to add owner role:', error);
+          toast.error("Failed to add owner role. Please try again.");
+        } finally {
+          setAddingOwnerRole(false);
+        }
+      } else if (isOwner()) {
+        // If already owner, just load pets
+        loadPets();
+      }
+    };
+
+    addOwnerRoleIfNeeded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user, isOwner]);
 
   const loadPets = async () => {
     setLoadingPets(true);
@@ -123,11 +153,13 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
   const selectedPet = pets.find(p => p._id === formData.pet);
   const typeDisplay = formData.type ? formData.type.charAt(0).toUpperCase() + formData.type.slice(1) : '';
 
-  if (loadingPets) {
+  if (loadingPets || addingOwnerRole) {
     return (
       <div className="min-h-screen pt-24 pb-24 px-4 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-muted-foreground">Loading your pets...</div>
+          <div className="text-muted-foreground">
+            {addingOwnerRole ? "Adding owner role..." : "Loading your pets..."}
+          </div>
         </div>
       </div>
     );

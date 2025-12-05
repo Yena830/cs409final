@@ -97,7 +97,7 @@ export function TasksPage({ onNavigate }: TasksPageProps) {
       ? `${task.pet.name}${task.pet.type ? ` (${task.pet.type})` : ''}`
       : 'Pet';
     
-    const imageUrl = task.image || task.pet?.photos?.[0] || 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=800';
+    const imageUrl = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
     
     const rewardDisplay = task.reward || (task.budget ? `$${task.budget}` : '$0');
     

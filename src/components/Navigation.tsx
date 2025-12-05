@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import { OnboardingModal } from "./OnboardingModal";
-import { useUser } from "../hooks/useUser";
+import { useUser } from "../contexts/UserContext";
+import { toast } from "sonner";
 
 interface NavigationProps {
   currentPage: string;
@@ -19,7 +20,7 @@ interface NavigationProps {
 
 export function Navigation({ currentPage, onNavigate }: NavigationProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { user, isAuthenticated, logout, isOwner } = useUser();
+  const { user, isAuthenticated, isOwner, isHelper, logout } = useUser();
   
   const handleLogout = () => {
     logout();
@@ -63,15 +64,26 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               <ChevronDown className="w-4 h-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem onClick={() => onNavigate('post-task')}>
+              <DropdownMenuItem onClick={() => {
+                if (!isAuthenticated) {
+                  toast.error("Please log in to continue");
+                  onNavigate("auth");
+                  return;
+                }
+                onNavigate('post-task');
+              }}>
                 Post a Task
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onNavigate('find-helpers')}>
                 Find Helpers
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNavigate('profile', { userType: 'owner' })}>
-                My Profile
-              </DropdownMenuItem>
+              {isAuthenticated && isOwner() && (
+                <DropdownMenuItem onClick={() => {
+                  onNavigate('owner-profile');
+                }}>
+                  My Owner Profile
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -84,9 +96,13 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               <DropdownMenuItem onClick={() => onNavigate('tasks')}>
                 Browse Tasks
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onNavigate('profile', { userType: 'helper' })}>
-                My Profile
-              </DropdownMenuItem>
+              {isAuthenticated && isHelper() && (
+                <DropdownMenuItem onClick={() => {
+                  onNavigate('helper-profile');
+                }}>
+                  My Helper Profile
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -104,7 +120,14 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             <>
               {isOwner() && (
                 <Button 
-                  onClick={() => onNavigate('post-task')}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please log in to continue");
+                      onNavigate("auth");
+                      return;
+                    }
+                    onNavigate('post-task');
+                  }}
                   className="bg-primary hover:bg-primary/90 text-white"
                 >
                   Post a Task
@@ -124,11 +147,19 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => onNavigate('profile', { userType: isOwner() ? 'owner' : 'helper' })}>
-                    <User className="w-4 h-4 mr-2" />
-                    My Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {isOwner() && (
+                    <DropdownMenuItem onClick={() => onNavigate('owner-profile')}>
+                      <User className="w-4 h-4 mr-2" />
+                      My Owner Profile
+                    </DropdownMenuItem>
+                  )}
+                  {isHelper() && (
+                    <DropdownMenuItem onClick={() => onNavigate('helper-profile')}>
+                      <User className="w-4 h-4 mr-2" />
+                      My Helper Profile
+                    </DropdownMenuItem>
+                  )}
+                  {(isOwner() || isHelper()) && <DropdownMenuSeparator />}
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="w-4 h-4 mr-2" />
                     Log Out
@@ -145,7 +176,14 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
                 Log In
               </Button>
               <Button 
-                onClick={() => onNavigate('post-task')}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    toast.error("Please log in to continue");
+                    onNavigate("auth");
+                    return;
+                  }
+                  onNavigate('post-task');
+                }}
                 className="bg-primary hover:bg-primary/90 text-white"
               >
                 Post a Task
@@ -164,22 +202,50 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             <span className="text-xs">Home</span>
           </button>
           <button 
-            onClick={() => onNavigate('post-task')}
+            onClick={() => {
+              if (!isAuthenticated) {
+                toast.error("Please log in to continue");
+                onNavigate("auth");
+                return;
+              }
+              onNavigate('post-task');
+            }}
             className={`flex flex-col items-center gap-1 ${currentPage === 'post-task' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <Heart className="w-5 h-5" />
             <span className="text-xs">Post</span>
           </button>
           <button 
-            onClick={() => onNavigate('messages')}
+            onClick={() => {
+              if (!isAuthenticated) {
+                toast.error("Please log in to continue");
+                onNavigate("auth");
+                return;
+              }
+              onNavigate('messages');
+            }}
             className={`flex flex-col items-center gap-1 ${currentPage === 'messages' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <MessageSquare className="w-5 h-5" />
             <span className="text-xs">Messages</span>
           </button>
           <button 
-            onClick={() => onNavigate('profile')}
-            className={`flex flex-col items-center gap-1 ${currentPage === 'profile' ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={() => {
+              if (!isAuthenticated) {
+                toast.error("Please log in to continue");
+                onNavigate("auth");
+                return;
+              }
+              // Navigate to owner profile if owner, helper profile if helper, or landing if neither
+              if (isOwner()) {
+                onNavigate('owner-profile');
+              } else if (isHelper()) {
+                onNavigate('helper-profile');
+              } else {
+                onNavigate('landing');
+              }
+            }}
+            className={`flex flex-col items-center gap-1 ${currentPage === 'owner-profile' || currentPage === 'helper-profile' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <User className="w-5 h-5" />
             <span className="text-xs">Profile</span>

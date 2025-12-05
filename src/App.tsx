@@ -7,30 +7,50 @@ import { TaskDetailPage } from "./components/TaskDetailPage";
 import { PostTaskPage } from "./components/PostTaskPage";
 import { MessagesPage } from "./components/MessagesPage";
 import { ProfilePage } from "./components/ProfilePage";
+import { OwnerProfilePage } from "./components/OwnerProfilePage";
+import { HelperProfilePage } from "./components/HelperProfilePage";
+import { HelperPublicProfilePage } from "./components/HelperPublicProfilePage";
 import { AuthPage } from "./components/AuthPage";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { useUser } from "./hooks/useUser";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("landing");
   const [navigationParams, setNavigationParams] = useState<Record<string, any>>({});
   const scrollPositions = useRef<Record<string, number>>({});
-  const { isAuthenticated, loading: userLoading } = useUser();
+  const { isAuthenticated, loading: userLoading, isOwner, isHelper } = useUser();
 
   // Protected routes that require authentication
   const protectedRoutes = [
-    'tasks',
-    'task-detail',
-    'find-helpers',
-    'post-task',
-    'profile',
-    'messages'
+    "post-task", 
+    "profile", 
+    "messages", 
+    "view-profile", 
+    "owner-profile", 
+    "helper-profile", 
+    "helper-public-profile"
   ];
+  
+  // Role-based routes
+  const ownerOnlyRoutes = ["owner-profile"];
+  const helperOnlyRoutes = ["helper-profile"];
   
   // Check if current route requires authentication
   const requiresAuth = protectedRoutes.includes(currentPage);
+  
+  // Check if current route requires specific role
+  const requiresOwnerRole = ownerOnlyRoutes.includes(currentPage);
+  const requiresHelperRole = helperOnlyRoutes.includes(currentPage);
 
   const handleNavigate = (page: string, params?: Record<string, any>) => {
+    // Check if the target page requires authentication
+    // Only check if user loading is complete
+    if (!userLoading && protectedRoutes.includes(page) && !isAuthenticated) {
+      toast.error("Please log in to continue");
+      setCurrentPage("auth");
+      return;
+    }
+    
     // Save current scroll position before navigating
     scrollPositions.current[currentPage] = window.scrollY;
     setCurrentPage(page);
@@ -54,10 +74,26 @@ export default function App() {
   useEffect(() => {
     if (userLoading) return;
 
+    // Check authentication
     if (requiresAuth && !isAuthenticated) {
+      toast.error("Please log in to continue");
       setCurrentPage("auth");
+      return;
     }
-  }, [userLoading, isAuthenticated, requiresAuth]);
+
+    // Check role-based access
+    if (requiresOwnerRole && isAuthenticated && !isOwner()) {
+      toast.error("Only owners can access this page");
+      setCurrentPage("landing");
+      return;
+    }
+
+    if (requiresHelperRole && isAuthenticated && !isHelper()) {
+      toast.error("Only helpers can access this page");
+      setCurrentPage("landing");
+      return;
+    }
+  }, [userLoading, isAuthenticated, requiresAuth, requiresOwnerRole, requiresHelperRole, isOwner, isHelper, currentPage]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -75,6 +111,15 @@ export default function App() {
         return <MessagesPage onNavigate={handleNavigate} selectedUserId={navigationParams.selectedUserId} />;
       case "profile":
         return <ProfilePage onNavigate={handleNavigate} userType={navigationParams.userType} />;
+      case "owner-profile":
+        return <OwnerProfilePage onNavigate={handleNavigate} />;
+      case "helper-profile":
+        return <HelperProfilePage onNavigate={handleNavigate} />;
+      case "helper-public-profile":
+        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} helperId={navigationParams.helperId} />;
+      case "view-profile":
+        // View helper profile - redirect to public helper profile
+        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} helperId={navigationParams.helperId} />;
       case "auth":
         return <AuthPage onNavigate={handleNavigate} />;
       default:
