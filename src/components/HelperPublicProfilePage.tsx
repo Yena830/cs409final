@@ -66,9 +66,9 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
       if (response.success && response.data) {
         const userData = response.data;
         
-        // Check if user has helper role
-        if (!userData.roles || !userData.roles.includes('helper')) {
-          toast.error("This user is not a helper");
+        // Allow both helper and owner roles
+        if (!userData.roles || (!userData.roles.includes('helper') && !userData.roles.includes('owner'))) {
+          toast.error("This user profile is not available");
           onNavigate('find-helpers');
           return;
         }
@@ -120,12 +120,12 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
     );
   }
 
-  // Check again if user is helper (safety check)
-  if (!helperUser.roles || !helperUser.roles.includes('helper')) {
+  // Check again if user is helper or owner (safety check)
+  if (!helperUser.roles || (!helperUser.roles.includes('helper') && !helperUser.roles.includes('owner'))) {
     return (
       <div className="min-h-screen pt-24 pb-24 px-4 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-muted-foreground mb-4">This user is not a helper.</div>
+          <div className="text-muted-foreground mb-4">This user profile is not available.</div>
           <Button onClick={() => onNavigate('find-helpers')}>Back to Find Helpers</Button>
         </div>
       </div>

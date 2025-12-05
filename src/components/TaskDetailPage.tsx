@@ -323,7 +323,10 @@ export function TaskDetailPage({ onNavigate, taskId }: TaskDetailPageProps) {
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task Owner</h3>
                 </div>
                 <div className="flex items-center gap-4 mb-4">
-                  <Avatar className="w-16 h-16">
+                  <Avatar 
+                    className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id })}
+                  >
                     <AvatarImage src={task.postedBy.profilePhoto} alt={task.postedBy.name} />
                     <AvatarFallback className="bg-primary text-white">
                       {task.postedBy.name.substring(0, 2).toUpperCase()}
@@ -331,7 +334,13 @@ export function TaskDetailPage({ onNavigate, taskId }: TaskDetailPageProps) {
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 style={{ fontWeight: 600 }}>{task.postedBy.name}</h4>
+                      <h4 
+                        style={{ fontWeight: 600 }}
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id })}
+                      >
+                        {task.postedBy.name}
+                      </h4>
                       <Shield className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex items-center gap-1">
@@ -361,7 +370,10 @@ export function TaskDetailPage({ onNavigate, taskId }: TaskDetailPageProps) {
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assigned Helper</h3>
                 </div>
                 <div className="flex items-center gap-4 mb-4">
-                  <Avatar className="w-16 h-16">
+                  <Avatar 
+                    className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
+                  >
                     <AvatarImage src={task.assignedTo.profilePhoto} alt={task.assignedTo.name} />
                     <AvatarFallback className="bg-primary text-white">
                       {task.assignedTo.name.substring(0, 2).toUpperCase()}
@@ -369,7 +381,13 @@ export function TaskDetailPage({ onNavigate, taskId }: TaskDetailPageProps) {
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 style={{ fontWeight: 600 }}>{task.assignedTo.name}</h4>
+                      <h4 
+                        style={{ fontWeight: 600 }}
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
+                      >
+                        {task.assignedTo.name}
+                      </h4>
                       <Shield className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex items-center gap-1">

@@ -89,8 +89,9 @@ function AppContent() {
     // Handle dynamic routes
     if (page === "task-detail" && params?.taskId) {
       navigate(`/task/${params.taskId}`);
-    } else if (page === "helper-public-profile" && params?.userId) {
-      navigate(`/helper/${params.userId}`);
+    } else if (page === "helper-public-profile" && (params?.userId || params?.helperId)) {
+      const targetUserId = params?.userId || params?.helperId;
+      navigate(`/helper/${targetUserId}`);
     } else if (pagePathMap[page]) {
       navigate(pagePathMap[page]);
     } else {
