@@ -526,15 +526,18 @@ export function OwnerProfilePage({ onNavigate }: OwnerProfilePageProps) {
                                 <h3 style={{ fontWeight: 600 }}>{task.title}</h3>
                                 <Badge 
                                   className={
-                                    task.status === 'open' || task.status === 'in_progress'
-                                      ? 'bg-primary text-white' 
+                                    task.status === 'open' 
+                                      ? 'bg-accent !text-white border-transparent' 
+                                      : task.status === 'in_progress'
+                                      ? 'bg-chart-5 !text-white border-transparent'
                                       : task.status === 'completed'
-                                      ? 'bg-green-500 text-white'
-                                      : 'bg-secondary text-secondary-foreground'
+                                      ? 'bg-primary !text-white border-transparent'
+                                      : 'bg-secondary !text-secondary-foreground border-transparent'
                                   }
                                 >
                                   {task.status.replace('_', ' ')}
                                 </Badge>
+              
                               </div>
                               <button 
                                 onClick={() => applicantsCount > 0 && handleViewApplicants(task)}
