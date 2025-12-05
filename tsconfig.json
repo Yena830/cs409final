@@ -23,11 +23,9 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "sonner@2.0.3": ["./node_modules/sonner"],
-      "sonner@2.0.3/*": ["./node_modules/sonner/*"]
+      "sonner": ["./node_modules/sonner/dist/index.d.ts"]
     }
   },
-  "include": ["src", "*.d.ts"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-

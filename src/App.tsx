@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { LandingPage } from "./components/LandingPage";
 import { TasksPage } from "./components/TasksPage";
@@ -14,9 +15,9 @@ import { AuthPage } from "./components/AuthPage";
 import { Toaster, toast } from "sonner";
 import { useUser } from "./hooks/useUser";
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState("landing");
-  const [navigationParams, setNavigationParams] = useState<Record<string, any>>({});
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const scrollPositions = useRef<Record<string, number>>({});
   const { isAuthenticated, loading: userLoading, isOwner, isHelper } = useUser();
 
@@ -35,33 +36,73 @@ export default function App() {
   const ownerOnlyRoutes = ["owner-profile"];
   const helperOnlyRoutes = ["helper-profile"];
   
-  // Check if current route requires authentication
-  const requiresAuth = protectedRoutes.includes(currentPage);
-  
-  // Check if current route requires specific role
-  const requiresOwnerRole = ownerOnlyRoutes.includes(currentPage);
-  const requiresHelperRole = helperOnlyRoutes.includes(currentPage);
+  // Map URL paths to page identifiers
+  const getPathPageMap = () => {
+    const pathMap: Record<string, string> = {
+      "/": "landing",
+      "/tasks": "tasks",
+      "/find-helpers": "find-helpers",
+      "/post-task": "post-task",
+      "/messages": "messages",
+      "/profile": "profile",
+      "/owner-profile": "owner-profile",
+      "/helper-profile": "helper-profile",
+      "/signin": "auth",
+      "/signup": "auth"
+    };
+    
+    // Handle dynamic routes
+    if (location.pathname.startsWith("/task/")) {
+      pathMap[location.pathname] = "task-detail";
+    } else if (location.pathname.startsWith("/helper/")) {
+      pathMap[location.pathname] = "helper-public-profile";
+    }
+    
+    return pathMap;
+  };
 
   const handleNavigate = (page: string, params?: Record<string, any>) => {
     // Check if the target page requires authentication
     // Only check if user loading is complete
     if (!userLoading && protectedRoutes.includes(page) && !isAuthenticated) {
       toast.error("Please log in to continue");
-      setCurrentPage("auth");
+      navigate("/signin");
       return;
     }
     
     // Save current scroll position before navigating
-    scrollPositions.current[currentPage] = window.scrollY;
-    setCurrentPage(page);
-    setNavigationParams(params || {});
+    scrollPositions.current[location.pathname] = window.scrollY;
+    
+    // Map page identifiers to URL paths
+    const pagePathMap: Record<string, string> = {
+      landing: "/",
+      tasks: "/tasks",
+      "find-helpers": "/find-helpers",
+      "post-task": "/post-task",
+      messages: "/messages",
+      profile: "/profile",
+      "owner-profile": "/owner-profile",
+      "helper-profile": "/helper-profile",
+      auth: "/signin"
+    };
+    
+    // Handle dynamic routes
+    if (page === "task-detail" && params?.taskId) {
+      navigate(`/task/${params.taskId}`);
+    } else if (page === "helper-public-profile" && params?.userId) {
+      navigate(`/helper/${params.userId}`);
+    } else if (pagePathMap[page]) {
+      navigate(pagePathMap[page]);
+    } else {
+      navigate("/");
+    }
   };
 
   useEffect(() => {
     // Restore scroll position after page change
-    const savedPosition = scrollPositions.current[currentPage] || 0;
+    const savedPosition = scrollPositions.current[location.pathname] || 0;
     window.scrollTo(0, savedPosition);
-  }, [currentPage]);
+  }, [location.pathname]);
 
   useEffect(() => {
     fetch("http://localhost:3001/api/health")
@@ -74,28 +115,44 @@ export default function App() {
   useEffect(() => {
     if (userLoading) return;
 
+    const currentPage = getPathPageMap()[location.pathname] || "landing";
+    
     // Check authentication
-    if (requiresAuth && !isAuthenticated) {
+    if (protectedRoutes.includes(currentPage) && !isAuthenticated) {
       toast.error("Please log in to continue");
-      setCurrentPage("auth");
+      navigate("/signin");
       return;
     }
-
+    
     // Check role-based access
-    if (requiresOwnerRole && isAuthenticated && !isOwner()) {
+    if (ownerOnlyRoutes.includes(currentPage) && isAuthenticated && !isOwner()) {
       toast.error("Only owners can access this page");
-      setCurrentPage("landing");
+      navigate("/");
       return;
     }
-
-    if (requiresHelperRole && isAuthenticated && !isHelper()) {
+    
+    if (helperOnlyRoutes.includes(currentPage) && isAuthenticated && !isHelper()) {
       toast.error("Only helpers can access this page");
-      setCurrentPage("landing");
+      navigate("/");
       return;
     }
-  }, [userLoading, isAuthenticated, requiresAuth, requiresOwnerRole, requiresHelperRole, isOwner, isHelper, currentPage]);
+  }, [userLoading, isAuthenticated, isOwner, isHelper, location.pathname, navigate]);
 
   const renderPage = () => {
+    const pathPageMap = getPathPageMap();
+    const currentPage = pathPageMap[location.pathname] || "landing";
+    
+    // Extract params from URL for dynamic routes
+    let navigationParams: Record<string, any> = {};
+    
+    if (location.pathname.startsWith("/task/")) {
+      const taskId = location.pathname.split("/")[2];
+      navigationParams.taskId = taskId;
+    } else if (location.pathname.startsWith("/helper/")) {
+      const userId = location.pathname.split("/")[2];
+      navigationParams.userId = userId;
+    }
+    
     switch (currentPage) {
       case "landing":
         return <LandingPage onNavigate={handleNavigate} />;
@@ -116,10 +173,10 @@ export default function App() {
       case "helper-profile":
         return <HelperProfilePage onNavigate={handleNavigate} />;
       case "helper-public-profile":
-        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} helperId={navigationParams.helperId} />;
+        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} />;
       case "view-profile":
         // View helper profile - redirect to public helper profile
-        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} helperId={navigationParams.helperId} />;
+        return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} />;
       case "auth":
         return <AuthPage onNavigate={handleNavigate} />;
       default:
@@ -129,11 +186,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      {currentPage !== "auth" && (
-        <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
+      {location.pathname !== "/signin" && location.pathname !== "/signup" && (
+        <Navigation currentPage={getPathPageMap()[location.pathname] || "landing"} onNavigate={handleNavigate} />
       )}
       {renderPage()}
       <Toaster position="top-center" richColors />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
