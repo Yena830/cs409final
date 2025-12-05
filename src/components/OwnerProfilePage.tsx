@@ -539,15 +539,17 @@ export function OwnerProfilePage({ onNavigate }: OwnerProfilePageProps) {
                                 </Badge>
               
                               </div>
-                              <button 
-                                onClick={() => applicantsCount > 0 && handleViewApplicants(task)}
-                                className={`text-sm text-muted-foreground flex items-center gap-2 ${
-                                  applicantsCount > 0 ? 'hover:text-primary cursor-pointer' : 'cursor-default'
-                                }`}
-                              >
-                                <Users className="w-4 h-4" />
-                                {applicantsCount} application{applicantsCount !== 1 ? 's' : ''} received
-                              </button>
+                              {task.status === 'open' && (
+                                <button 
+                                  onClick={() => applicantsCount > 0 && handleViewApplicants(task)}
+                                  className={`text-sm text-muted-foreground flex items-center gap-2 ${
+                                    applicantsCount > 0 ? 'hover:text-primary cursor-pointer' : 'cursor-default'
+                                  }`}
+                                >
+                                  <Users className="w-4 h-4" />
+                                  {applicantsCount} application{applicantsCount !== 1 ? 's' : ''} received
+                                </button>
+                              )}
                             </div>
                             <div className="flex gap-2">
                               <Button 
