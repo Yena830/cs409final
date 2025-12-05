@@ -99,17 +99,6 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                 >
                   Find Helpers
                 </Button>
-                <button
-                  onClick={async () => {
-                    const res = await fetch("http://localhost:3001/api/health");
-                    const data = await res.json();
-                    console.log(data);
-                    alert(JSON.stringify(data));
-                  }}
-                  className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                >
-                  Test Backend Connection
-                </button>
               </div>
             </div>
 

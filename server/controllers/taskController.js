@@ -43,7 +43,7 @@ export const createTask = async (req, res) => {
     // Create task
     const task = await Task.create({
       title,
-      description: description || '',
+      description: description !== undefined && description !== null ? description : '',
       type,
       location,
       budget: budget || 0,
@@ -76,6 +76,14 @@ export const createTask = async (req, res) => {
       data: populatedTask,
     });
   } catch (error) {
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', '),
+      });
+    }
     res.status(500).json({
       success: false,
       message: error.message || 'Error creating task',
