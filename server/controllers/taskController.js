@@ -68,8 +68,8 @@ export const createTask = async (req, res) => {
     // Populate and return
     const populatedTask = await Task.findById(task._id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto');
 
     res.status(201).json({
@@ -97,8 +97,8 @@ export const getAllTasks = async (req, res) => {
   try {
     const tasks = await Task.find()
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto')
       .sort({ createdAt: -1 });
 
@@ -121,8 +121,8 @@ export const getTaskById = async (req, res) => {
 
     const task = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto');
 
     if (!task) {
@@ -198,8 +198,8 @@ export const applyToTask = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -264,8 +264,8 @@ export const assignHelper = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -318,8 +318,8 @@ export const completeTask = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto')
-      .populate('assignedTo', 'name profilePhoto')
+      .populate('postedBy', 'name profilePhoto rating')
+      .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -421,12 +421,13 @@ export const submitReview = async (req, res) => {
 
     // Update reviewee's average rating
     const reviews = await Review.find({ reviewee: revieweeId });
-    const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-
-    // Update user's rating (if rating field exists in user model)
-    await User.findByIdAndUpdate(revieweeId, {
-      $set: { rating: Math.round(averageRating * 10) / 10 }, // Round to 1 decimal place
-    });
+    if (reviews.length > 0) {
+      const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      // Update user's rating (if rating field exists in user model)
+      await User.findByIdAndUpdate(revieweeId, {
+        $set: { rating: Math.round(averageRating * 10) / 10 }, // Round to 1 decimal place
+      });
+    }
 
     // Populate and return review
     const populatedReview = await Review.findById(review._id)

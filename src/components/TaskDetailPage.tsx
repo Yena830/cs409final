@@ -39,11 +39,13 @@ interface Task {
     _id: string;
     name: string;
     profilePhoto?: string;
+    rating?: number;
   };
   assignedTo?: {
     _id: string;
     name: string;
     profilePhoto?: string;
+    rating?: number;
   };
   applicants?: Array<{
     _id: string;
@@ -171,6 +173,13 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
       const response = await api.get<Task>(`/tasks/${taskId}`);
       if (response.success && response.data) {
         setTask(response.data);
+        // Debug: log rating values
+        if (response.data.postedBy) {
+          console.log('Owner rating:', response.data.postedBy.rating);
+        }
+        if (response.data.assignedTo) {
+          console.log('Helper rating:', response.data.assignedTo.rating);
+        }
       } else {
         toast.error("Failed to load task");
         onNavigate('tasks');
@@ -273,11 +282,12 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
             createdAt: response.data.createdAt || new Date().toISOString(),
           });
         }
-        loadTask(); // Reload task to update any review-related data
-        // Re-check review status to ensure we have the latest data
+        // Reload task to update rating and review-related data
+        // Add a small delay to ensure backend has updated the rating
         setTimeout(() => {
+          loadTask();
           checkReviewStatus();
-        }, 500);
+        }, 1000);
       } else {
         throw new Error(response.message || "Failed to submit review");
       }
@@ -313,6 +323,20 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
   const rewardDisplay = task.reward || (task.budget ? `$${task.budget}` : '$0');
   const timeDisplay = task.time || (task.date ? new Date(task.date).toLocaleDateString() : 'Flexible');
   const typeDisplay = task.type ? task.type.charAt(0).toUpperCase() + task.type.slice(1) : 'Task';
+
+  // Format rating display
+  const formatRating = (rating?: number): string => {
+    // Check if rating is undefined, null, or 0
+    if (rating === undefined || rating === null || rating === 0) {
+      return 'No rating';
+    }
+    // Ensure rating is a valid number
+    const numRating = Number(rating);
+    if (isNaN(numRating) || numRating === 0) {
+      return 'No rating';
+    }
+    return numRating.toFixed(1);
+  };
 
   // Format applicants for ApplicantsDialog
   const formattedApplicants = task.applicants?.map(app => ({
@@ -442,7 +466,9 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-sm" style={{ fontWeight: 600 }}>4.9</span>
+                      <span className="text-sm" style={{ fontWeight: 600 }}>
+                        {formatRating(task.postedBy?.rating)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -543,7 +569,9 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
                         </div>
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm" style={{ fontWeight: 600 }}>4.9</span>
+                          <span className="text-sm" style={{ fontWeight: 600 }}>
+                            {formatRating(task.assignedTo?.rating)}
+                          </span>
                         </div>
                       </div>
                     </div>
