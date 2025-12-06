@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -58,7 +58,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
-  const [assigning, setAssigning] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [applicantsDialogOpen, setApplicantsDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -74,7 +73,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
     createdAt: string;
     reviewerName: string;
   } | null>(null);
-  const { user, isOwner, isHelper, isAuthenticated } = useUser();
+  const { user, isHelper, isAuthenticated } = useUser();
 
   useEffect(() => {
     if (taskId) {
@@ -223,7 +222,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
   const handleAssignHelper = async (helperId: string) => {
     if (!taskId) return;
 
-    setAssigning(true);
     try {
       const response = await api.post(`/tasks/${taskId}/assign`, { helperId });
       if (response.success) {
@@ -235,8 +233,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
       }
     } catch (error) {
       toast.error("Failed to assign helper");
-    } finally {
-      setAssigning(false);
     }
   };
 
