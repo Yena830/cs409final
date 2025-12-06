@@ -43,7 +43,35 @@ class ApiClient {
       throw new Error('Unauthorized');
     }
 
-    const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // If not JSON, try to get text to see what we got
+      const text = await response.text();
+      console.error('Non-JSON response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        url: response.url,
+        preview: text.substring(0, 200)
+      });
+      
+      return {
+        success: false,
+        message: `Server returned ${response.status} ${response.statusText}. Expected JSON but got ${contentType || 'unknown'}. Please check the server logs.`,
+      };
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      return {
+        success: false,
+        message: 'Failed to parse server response. Please check the server logs.',
+      };
+    }
     
     return {
       success: response.ok,

@@ -1,5 +1,6 @@
 import Pet from '../models/pet.js';
 import User from '../models/user.js';
+import upload from '../middleware/uploadMiddleware.js';
 
 // Create a new pet
 export const createPet = async (req, res) => {
@@ -141,6 +142,47 @@ export const deletePet = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Error deleting pet',
+    });
+  }
+};
+
+/**
+ * Upload pet photo
+ * Route: POST /api/pets/upload-photo
+ */
+export const uploadPetPhoto = async (req, res) => {
+  try {
+    console.log('Upload pet photo - Request received');
+    console.log('Upload pet photo - File:', req.file);
+    console.log('Upload pet photo - Files:', req.files);
+    console.log('Upload pet photo - Body:', req.body);
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      console.log('Upload pet photo - No file in request');
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded. Please select an image file.',
+      });
+    }
+
+    // Construct the full URL based on the server
+    const protocol = req.protocol || 'http';
+    const host = req.get('host') || 'localhost:3001';
+    const photoUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+    console.log('Upload pet photo - Success, URL:', photoUrl);
+
+    res.json({
+      success: true,
+      data: { photoUrl },
+      message: 'Pet photo uploaded successfully',
+    });
+  } catch (error) {
+    console.error('Error uploading pet photo:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error uploading pet photo',
     });
   }
 };
