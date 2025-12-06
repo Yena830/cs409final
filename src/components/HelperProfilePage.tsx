@@ -420,7 +420,7 @@ export function HelperProfilePage({ onNavigate }: HelperProfilePageProps) {
                                       : 'bg-secondary !text-secondary-foreground border-transparent'
                                   }
                                 >
-                                  {task.status.replace('_', ' ')}
+                                  {task.status === 'open' ? 'pending' : task.status.replace('_', ' ')}
                                 </Badge>
                               </div>
                               <div className="text-sm text-muted-foreground space-y-1">
