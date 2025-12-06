@@ -239,7 +239,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
                       } text-white`}
                       style={{ fontWeight: 600 }}
                     >
-                      {task.status}
+                      {task.status === 'open' && isHelper() ? 'pending' : task.status === 'open' ? task.status : task.status.replace('_', ' ')}
                     </Badge>
                   </div>
                   <Badge className="bg-primary text-white" style={{ fontWeight: 600 }}>{typeDisplay}</Badge>
