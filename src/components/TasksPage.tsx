@@ -33,7 +33,7 @@ interface Task {
     _id: string;
     name: string;
     profilePhoto?: string;
-    rating?: number;
+    ownerRating?: number;
   };
   status: string;
 }
@@ -131,7 +131,7 @@ export function TasksPage({ onNavigate }: TasksPageProps) {
     const typeDisplay = task.type ? task.type.charAt(0).toUpperCase() + task.type.slice(1) : 'Task';
     
     // Get owner's rating (average from reviews)
-    const ownerRating = task.postedBy?.rating;
+    const ownerRating = task.postedBy?.ownerRating;
     
     return {
       id: task._id,

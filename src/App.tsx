@@ -58,6 +58,16 @@ function AppContent() {
     
     return pathMap;
   };
+  
+  // Extract query parameters from URL
+  const getQueryParams = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const params: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+    return params;
+  };
 
   const handleNavigate = (page: string, params?: Record<string, any>) => {
     // Check if the target page requires authentication
@@ -83,6 +93,13 @@ function AppContent() {
       "helper-profile": "/helper-profile",
       auth: "/signin"
     };
+    
+    // Handle profile pages with activeTab parameter
+    if ((page === "owner-profile" || page === "helper-profile" || page === "profile") && params?.activeTab) {
+      const basePath = pagePathMap[page];
+      navigate(`${basePath}?activeTab=${params.activeTab}`);
+      return;
+    }
     
     // Handle dynamic routes
     if (page === "task-detail" && params?.taskId) {
@@ -142,6 +159,7 @@ function AppContent() {
   const renderPage = () => {
     const pathPageMap = getPathPageMap();
     const currentPage = pathPageMap[location.pathname] || "landing";
+    const queryParams = getQueryParams();
     
     // Extract params from URL for dynamic routes
     let navigationParams: Record<string, any> = {};
@@ -149,15 +167,23 @@ function AppContent() {
     if (location.pathname.startsWith("/task/")) {
       const taskId = location.pathname.split("/")[2];
       navigationParams.taskId = taskId;
-      // Extract returnTo from query string
-      const searchParams = new URLSearchParams(location.search);
-      const returnTo = searchParams.get('returnTo');
-      if (returnTo) {
-        navigationParams.returnTo = returnTo;
+      // Extract returnTo and activeTab from query string
+      if (queryParams.returnTo) {
+        navigationParams.returnTo = queryParams.returnTo;
+      }
+      if (queryParams.activeTab) {
+        navigationParams.activeTab = queryParams.activeTab;
       }
     } else if (location.pathname.startsWith("/helper/")) {
       const userId = location.pathname.split("/")[2];
       navigationParams.userId = userId;
+    }
+    
+    // Extract activeTab for profile pages
+    if (currentPage === "owner-profile" || currentPage === "helper-profile" || currentPage === "profile") {
+      if (queryParams.activeTab) {
+        navigationParams.activeTab = queryParams.activeTab;
+      }
     }
     
     switch (currentPage) {
@@ -168,7 +194,7 @@ function AppContent() {
       case "find-helpers":
         return <FindHelpersPage onNavigate={handleNavigate} />;
       case "task-detail":
-        return <TaskDetailPage onNavigate={handleNavigate} taskId={navigationParams.taskId} returnTo={navigationParams.returnTo} />;
+        return <TaskDetailPage onNavigate={handleNavigate} taskId={navigationParams.taskId} returnTo={navigationParams.returnTo} activeTab={navigationParams.activeTab} />;
       case "post-task":
         return <PostTaskPage onNavigate={handleNavigate} />;
       case "messages":
@@ -176,11 +202,11 @@ function AppContent() {
       case "profile":
         // Determine user type for profile page
         const userType = isHelper() ? 'helper' : 'owner';
-        return <ProfilePage onNavigate={handleNavigate} userType={userType} />;
+        return <ProfilePage onNavigate={handleNavigate} userType={userType} activeTab={navigationParams.activeTab} />;
       case "owner-profile":
-        return <ProfilePage onNavigate={handleNavigate} userType="owner" />;
+        return <ProfilePage onNavigate={handleNavigate} userType="owner" activeTab={navigationParams.activeTab} />;
       case "helper-profile":
-        return <ProfilePage onNavigate={handleNavigate} userType="helper" />;
+        return <ProfilePage onNavigate={handleNavigate} userType="helper" activeTab={navigationParams.activeTab} />;
       case "helper-public-profile":
         return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} />;
       case "view-profile":

@@ -86,18 +86,24 @@ router.get('/:id/reviews', async (req, res) => {
     // Filter by role if specified
     if (role === 'helper') {
       // For helper: only show reviews where user is the assigned helper (owner reviewed helper)
+      // This means: review.reviewee === id AND task.assignedTo === id
+      // The reviewee is already filtered by the query above, so we just need to check task.assignedTo
       reviews = reviews.filter(review => {
         const task = review.task;
         if (!task || !task.assignedTo) return false;
         const assignedToId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        // Only show reviews where the user was the helper in the task
         return assignedToId === id;
       });
     } else if (role === 'owner') {
       // For owner: only show reviews where user is the task owner (helper reviewed owner)
+      // This means: review.reviewee === id AND task.postedBy === id
+      // The reviewee is already filtered by the query above, so we just need to check task.postedBy
       reviews = reviews.filter(review => {
         const task = review.task;
         if (!task || !task.postedBy) return false;
         const postedById = task.postedBy._id ? task.postedBy._id.toString() : task.postedBy.toString();
+        // Only show reviews where the user was the owner in the task
         return postedById === id;
       });
     }
