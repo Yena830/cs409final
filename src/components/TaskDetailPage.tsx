@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, DollarSign, Shield, MessageCircle, ArrowLeft, Heart, Users, PawPrint } from "lucide-react";
+import { Star, MapPin, Clock, Banknote, Shield, MessageCircle, ArrowLeft, Heart, Users, PawPrint } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
@@ -320,7 +320,20 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
 
   const petImage = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
 
-  const rewardDisplay = task.reward || (task.budget ? `$${task.budget}` : '$0');
+  // Format reward to ensure only one dollar sign
+  const formatRewardDisplay = (reward?: string, budget?: number): string => {
+    if (reward) {
+      // Remove all $ signs and add one
+      const numericValue = reward.replace(/[^0-9.]/g, '');
+      return numericValue ? `$${numericValue}` : '$0';
+    }
+    if (budget) {
+      return `$${budget}`;
+    }
+    return '$0';
+  };
+  
+  const rewardDisplay = formatRewardDisplay(task.reward, task.budget);
   const timeDisplay = task.time || (task.date ? new Date(task.date).toLocaleDateString() : 'Flexible');
   const typeDisplay = task.type ? task.type.charAt(0).toUpperCase() + task.type.slice(1) : 'Task';
 
@@ -419,7 +432,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-primary" />
+                    <Banknote className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Reward</div>

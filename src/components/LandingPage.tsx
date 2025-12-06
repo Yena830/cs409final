@@ -148,7 +148,20 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div className="grid md:grid-cols-3 gap-6">
               {featuredTasks.map((task, index) => {
                 const imageUrl = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
-                const rewardDisplay = task.reward || (task.budget ? `$${task.budget}` : '$0');
+                // Format reward to ensure only one dollar sign
+                const formatRewardDisplay = (reward?: string, budget?: number): string => {
+                  if (reward) {
+                    // Remove all $ signs and add one
+                    const numericValue = reward.replace(/[^0-9.]/g, '');
+                    return numericValue ? `$${numericValue}` : '$0';
+                  }
+                  if (budget) {
+                    return `$${budget}`;
+                  }
+                  return '$0';
+                };
+                
+                const rewardDisplay = formatRewardDisplay(task.reward, task.budget);
                 const timeDisplay = task.time || (task.date ? new Date(task.date).toLocaleDateString() : 'Flexible');
                 
                 return (
