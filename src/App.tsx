@@ -8,8 +8,6 @@ import { TaskDetailPage } from "./components/TaskDetailPage";
 import { PostTaskPage } from "./components/PostTaskPage";
 import { MessagesPage } from "./components/MessagesPage";
 import { ProfilePage } from "./components/ProfilePage";
-import { OwnerProfilePage } from "./components/OwnerProfilePage";
-import { HelperProfilePage } from "./components/HelperProfilePage";
 import { HelperPublicProfilePage } from "./components/HelperPublicProfilePage";
 import { AuthPage } from "./components/AuthPage";
 import { Toaster, toast } from "sonner";
@@ -176,11 +174,13 @@ function AppContent() {
       case "messages":
         return <MessagesPage onNavigate={handleNavigate} selectedUserId={navigationParams.selectedUserId} />;
       case "profile":
-        return <ProfilePage onNavigate={handleNavigate} userType={navigationParams.userType} />;
+        // Determine user type for profile page
+        const userType = isHelper() ? 'helper' : 'owner';
+        return <ProfilePage onNavigate={handleNavigate} userType={userType} />;
       case "owner-profile":
-        return <OwnerProfilePage onNavigate={handleNavigate} />;
+        return <ProfilePage onNavigate={handleNavigate} userType="owner" />;
       case "helper-profile":
-        return <HelperProfilePage onNavigate={handleNavigate} />;
+        return <ProfilePage onNavigate={handleNavigate} userType="helper" />;
       case "helper-public-profile":
         return <HelperPublicProfilePage onNavigate={handleNavigate} userId={navigationParams.userId} />;
       case "view-profile":

@@ -12,6 +12,7 @@ export interface User {
   roles: string[];
   bio?: string;
   profilePhoto?: string;
+  createdAt?: string;
 }
 
 interface UserContextType {
@@ -128,4 +129,3 @@ export function useUser() {
   }
   return context;
 }
-

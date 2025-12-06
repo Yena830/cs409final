@@ -1,8 +1,9 @@
 import express from 'express';
 import User from '../models/user.js';
 import Review from '../models/review.js';
-import { addRole, addRoleToCurrentUser } from '../controllers/userController.js';
+import { addRole, addRoleToCurrentUser, uploadProfilePhoto, updateUserProfile } from '../controllers/userController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
+import upload from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -41,6 +42,9 @@ router.get('/helpers', async (req, res) => {
 // POST /api/users/add-role - Add a role to the current authenticated user (protected)
 router.post('/add-role', verifyToken, addRoleToCurrentUser);
 
+// POST /api/users/upload-profile-photo - Upload profile photo for current user (protected)
+router.post('/upload-profile-photo', verifyToken, upload.single('image'), uploadProfilePhoto);
+
 // POST /api/users - Create a new user
 router.post('/', async (req, res) => {
   try {
@@ -67,7 +71,7 @@ router.get('/:id/reviews', async (req, res) => {
       .populate('reviewer', 'name profilePhoto')
       .populate('task', 'title')
       .sort({ createdAt: -1 });
-    
+
     res.json({
       success: true,
       data: reviews,
@@ -99,21 +103,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/users/:id - Update a user by ID
-router.put('/:id', async (req, res) => {
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ message: 'OK', data: user });
-  } catch (error) {
-    res.status(400).json({ message: 'Error updating user', error: error.message });
-  }
-});
+router.put('/:id', verifyToken, updateUserProfile);
 
 // DELETE /api/users/:id - Delete a user by ID
 router.delete('/:id', async (req, res) => {

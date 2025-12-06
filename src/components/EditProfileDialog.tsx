@@ -6,7 +6,8 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Upload, Camera } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
+import { api } from "../lib/api";
 
 interface ProfileData {
   username: string;
@@ -24,17 +25,56 @@ interface EditProfileDialogProps {
 
 export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: EditProfileDialogProps) {
   const [formData, setFormData] = useState<ProfileData>(profileData);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
-    toast.success("Profile updated successfully!");
-    onOpenChange(false);
   };
 
-  const handlePhotoUpload = () => {
-    // Simulated photo upload
-    toast.info("Photo upload feature would be implemented here");
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select an image file (JPEG, PNG, GIF)");
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size too large. Maximum 5MB allowed.");
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Upload image to server
+      // Note: We don't need to manually set Content-Type header for FormData
+      // The browser will automatically set it with the correct boundary
+      const response = await api.post<{ profilePhoto: string }>('/users/upload-profile-photo', formData);
+      
+      if (response.success && response.data?.profilePhoto) {
+        // Update form data with new photo URL
+        setFormData(prev => ({ ...prev, profilePhoto: response.data!.profilePhoto }));
+        toast.success("Photo uploaded successfully!");
+      } else {
+        toast.error(response.message || "Failed to upload photo");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload photo. Please try again.");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      e.target.value = '';
+    }
   };
 
   return (
@@ -55,17 +95,29 @@ export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: E
                   {formData.username.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <button
-                type="button"
-                onClick={handlePhotoUpload}
-                className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+              <label
+                className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors cursor-pointer"
               >
                 <Camera className="w-5 h-5" />
-              </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={isUploading}
+                />
+              </label>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={handlePhotoUpload}>
+            <Button type="button" variant="outline" size="sm" disabled={isUploading}>
               <Upload className="w-4 h-4 mr-2" />
-              Change Photo
+              {isUploading ? "Uploading..." : "Change Photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+                disabled={isUploading}
+              />
             </Button>
           </div>
 
@@ -108,7 +160,7 @@ export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: E
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={isUploading}>Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>

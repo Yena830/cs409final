@@ -136,16 +136,22 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
   const rating = helperUser.rating || 0;
   const reviewCount = helperUser.reviewCount || 0;
 
+  const handleBack = () => {
+    // Use browser history to go back to previous page
+    // React Router manages the history, so back() will work for in-app navigation
+    window.history.back();
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-24 px-4">
       <div className="max-w-[1200px] mx-auto">
         <Button
           variant="ghost"
-          onClick={() => onNavigate('find-helpers')}
+          onClick={handleBack}
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Find Helpers
+          Back
         </Button>
 
         {/* Profile Header */}

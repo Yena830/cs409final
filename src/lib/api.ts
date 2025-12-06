@@ -12,10 +12,10 @@ interface ApiResponse<T = any> {
 }
 
 class ApiClient {
-  private getAuthHeaders(): HeadersInit {
+  private getAuthHeaders(contentType: string = 'application/json'): HeadersInit {
     const token = localStorage.getItem('token');
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      'Content-Type': contentType,
     };
     
     if (token) {
@@ -30,9 +30,16 @@ class ApiClient {
       // Unauthorized - clear token and redirect to auth
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.hash !== '#auth') {
+      
+      // Only redirect if we're not already on an auth-related page
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath === '/signin' || currentPath === '/signup' || currentPath === '/auth';
+      
+      if (!isAuthPage) {
+        // Use the navigate function if available, otherwise fallback to hash navigation
         window.location.hash = 'auth';
       }
+      
       throw new Error('Unauthorized');
     }
 
@@ -61,12 +68,21 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+  async post<T = any>(path: string, body: any, options?: { headers?: HeadersInit }): Promise<ApiResponse<T>> {
     try {
+      // For FormData (file uploads), let the browser set Content-Type automatically
+      const isFormData = body instanceof FormData;
+      const defaultHeaders = isFormData ? this.getAuthHeadersWithoutContentType() : this.getAuthHeaders();
+      const headers = { ...defaultHeaders, ...options?.headers };
+      
+      // Add debug logging to see what headers are actually being sent
+      console.log('POST Request - Is FormData:', isFormData);
+      console.log('POST Request - Headers:', headers);
+      
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(body),
+        headers,
+        body: isFormData ? body : JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);
@@ -76,6 +92,21 @@ class ApiClient {
         message: error instanceof Error ? error.message : 'Network error',
       };
     }
+  }
+
+  // Helper method to get auth headers without Content-Type (for FormData)
+  private getAuthHeadersWithoutContentType(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {};
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('Auth Headers With Token:', headers); // Debug log
+    } else {
+      console.log('No auth token found'); // Debug log
+    }
+    
+    return headers;
   }
 
   async put<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
@@ -130,4 +161,3 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-
