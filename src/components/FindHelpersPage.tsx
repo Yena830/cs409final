@@ -18,6 +18,8 @@ interface FindHelpersPageProps {
 interface HelperUser extends User {
   _id: string;
   createdAt?: string;
+  helperRating?: number;
+  ownerRating?: number;
 }
 
 // UI Helper interface for display
@@ -81,11 +83,18 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
           // Use profilePhoto or default image
           const image = user.profilePhoto || 'https://images.unsplash.com/photo-1565069859254-6248c5a4bc67?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
 
+          // Debug: log user data to check helperRating
+          console.log(`FindHelpersPage - User ${user.name}:`, {
+            helperRating: user.helperRating,
+            ownerRating: user.ownerRating,
+            fullUser: user
+          });
+
           return {
             _id: user._id,
             name: user.name,
             image,
-            rating: 0, // Default - can be calculated from reviews in future
+            rating: (user.helperRating !== undefined && user.helperRating !== null && user.helperRating > 0) ? user.helperRating : 0, // Use actual helperRating from backend
             reviewCount: 0, // Default - can be fetched from reviews in future
             location: "", // Default - could be added to user model later
             services: defaultServices, // Default - could be derived from task types
@@ -262,7 +271,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                           <div className="flex items-center gap-1 mb-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                             <span style={{ fontWeight: 600 }}>
-                              {helper.rating > 0 ? helper.rating : '—'}
+                              {helper.rating && helper.rating > 0 ? helper.rating.toFixed(1) : '—'}
                             </span>
                             {helper.reviewCount > 0 && (
                               <span className="text-muted-foreground text-sm">

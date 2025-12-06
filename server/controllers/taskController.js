@@ -68,8 +68,8 @@ export const createTask = async (req, res) => {
     // Populate and return
     const populatedTask = await Task.findById(task._id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto');
 
     res.status(201).json({
@@ -97,8 +97,8 @@ export const getAllTasks = async (req, res) => {
   try {
     const tasks = await Task.find()
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto')
       .sort({ createdAt: -1 });
 
@@ -121,8 +121,8 @@ export const getTaskById = async (req, res) => {
 
     const task = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto');
 
     if (!task) {
@@ -213,8 +213,8 @@ export const applyToTask = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -279,8 +279,8 @@ export const assignHelper = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -387,8 +387,8 @@ export const confirmTask = async (req, res) => {
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
       .populate('pet', 'name type photos')
-      .populate('postedBy', 'name profilePhoto rating')
-      .populate('assignedTo', 'name profilePhoto rating')
+      .populate('postedBy', 'name profilePhoto ownerRating')
+      .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto');
 
     res.json({
@@ -488,15 +488,47 @@ export const submitReview = async (req, res) => {
       comment: comment || '',
     });
 
-    // Update reviewee's average rating
-    const reviews = await Review.find({ reviewee: revieweeId });
-    if (reviews.length > 0) {
-      const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-      // Update user's rating (if rating field exists in user model)
-      await User.findByIdAndUpdate(revieweeId, {
-        $set: { rating: Math.round(averageRating * 10) / 10 }, // Round to 1 decimal place
-      });
-    }
+    // Update reviewee's average rating based on role
+    // Get all tasks where the reviewee was involved (as owner or helper)
+    const revieweeTasks = await Task.find({
+      $or: [
+        { postedBy: revieweeId },
+        { assignedTo: revieweeId }
+      ]
+    }).select('_id postedBy assignedTo');
+    
+    // Determine which rating field to update based on the role in this task
+    // isReviewingHelper is already defined above, so we reuse it
+    const updateField = isReviewingHelper ? 'helperRating' : 'ownerRating';
+    
+    // Get all reviews where reviewee was reviewed in the same role
+    const taskIdsForRole = revieweeTasks
+      .filter(t => {
+        if (isReviewingHelper) {
+          // For helper rating: only count tasks where user was the helper
+          return t.assignedTo && t.assignedTo.toString() === revieweeId.toString();
+        } else {
+          // For owner rating: only count tasks where user was the owner
+          return t.postedBy && t.postedBy.toString() === revieweeId.toString();
+        }
+      })
+      .map(t => t._id);
+    
+    // Find all reviews for this role
+    const reviewsForRole = await Review.find({
+      reviewee: revieweeId,
+      task: { $in: taskIdsForRole }
+    });
+    
+    // Always update rating, even if it's 0 (for new reviews)
+    const averageRating = reviewsForRole.length > 0
+      ? reviewsForRole.reduce((sum, r) => sum + r.rating, 0) / reviewsForRole.length
+      : 0;
+    
+    // Update the appropriate rating field
+    await User.findByIdAndUpdate(revieweeId, {
+      $set: { [updateField]: Math.round(averageRating * 10) / 10 }, // Round to 1 decimal place
+    });
 
     // Populate and return review
     const populatedReview = await Review.findById(review._id)

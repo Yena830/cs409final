@@ -36,6 +36,18 @@ const userSchema = new mongoose.Schema(
       min: 0,
       max: 5,
     },
+    ownerRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    helperRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
     pets: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Pet',
