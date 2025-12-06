@@ -514,29 +514,58 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
 
             {/* Right column content - depends on task status */}
             {task.status === "open" ? (
-              /* Task Status - Show when status is open */
-              ((isTaskOwner || isTaskHelper)) && (
-                <Card className="p-4 border-0 shadow-md h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
-                    <Badge 
-                      className="bg-accent !text-white border-transparent"
+              /* Task Status Card - Always show when status is open */
+              <Card className="p-4 border-0 shadow-md flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
+                  <Badge 
+                    className="bg-accent !text-white border-transparent"
+                  >
+                    {task.status?.replace(/_/g, ' ') || 'unknown'}
+                  </Badge>
+                </div>
+                
+                {/* Owner: View Applications button */}
+                {isTaskOwner && task.applicants && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setApplicantsDialogOpen(true)}
+                    className="flex items-center gap-2 w-full mt-auto"
+                  >
+                    <Users className="w-4 h-4" />
+                    View Applications ({task.applicants.length})
+                  </Button>
+                )}
+                
+                {/* Non-owner: Apply button */}
+                {!isTaskOwner && isAuthenticated && (
+                  <div className="mt-auto space-y-4">
+                    <div className="bg-secondary/20 p-4 rounded-xl">
+                      <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
+                      <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
+                      <div className="text-sm text-muted-foreground">per session</div>
+                    </div>
+                    <Button 
+                      size="lg" 
+                      className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                      onClick={handleApply}
+                      disabled={applying || hasApplied}
                     >
-                      {task.status?.replace(/_/g, ' ') || 'unknown'}
-                    </Badge>
-                  </div>
-                  {isTaskOwner && task.applicants && task.applicants.length > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setApplicantsDialogOpen(true)}
-                      className="flex items-center gap-2 w-full mt-auto"
-                    >
-                      <Users className="w-4 h-4" />
-                      View Applications ({task.applicants.length})
+                      {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
                     </Button>
-                  )}
-                </Card>
-              )
+                    {hasApplied && (
+                      <p className="text-xs text-center text-primary">
+                        Your application has been submitted
+                      </p>
+                    )}
+                    {!hasApplied && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        You'll be able to chat with the owner after applying
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Card>
             ) : (
               /* Helper Info - Show when status is not open */
               <>
