@@ -31,12 +31,30 @@ interface HelperUser extends UserType {
   verified?: boolean;
 }
 
+interface Review {
+  _id: string;
+  rating: number;
+  comment: string;
+  reviewer: {
+    _id: string;
+    name: string;
+    profilePhoto?: string;
+  };
+  task: {
+    _id: string;
+    title: string;
+  };
+  createdAt: string;
+}
+
 export function HelperPublicProfilePage({ onNavigate, userId, helperId }: HelperPublicProfilePageProps) {
   // Support both userId and helperId for backward compatibility
   const targetUserId = helperId || userId;
   const { loading: userLoading, isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [helperUser, setHelperUser] = useState<HelperUser | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   // Load helper user data
   useEffect(() => {
@@ -76,6 +94,14 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
         }
         
         setHelperUser(userData);
+        // Load reviews after user data is loaded, pass roles to avoid state timing issues
+        console.log('HelperPublicProfilePage - User data loaded:', {
+          userId: userData._id,
+          roles: userData.roles,
+          name: userData.name
+        });
+        // Use setTimeout to ensure state is updated, but pass roles directly
+        loadReviews(userData._id, userData.roles);
       } else {
         toast.error(response.message || "Failed to load helper profile");
         onNavigate('find-helpers');
@@ -86,6 +112,75 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
       onNavigate('find-helpers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadReviews = async (userId: string, userRoles?: string[]) => {
+    if (!userId) return;
+    
+    setLoadingReviews(true);
+    try {
+      // Determine the role to filter reviews by
+      // If user has helper role, show reviews where they were the helper
+      // If user has owner role (and not helper), show reviews where they were the owner
+      const roles = userRoles || helperUser?.roles || [];
+      const isHelper = roles.includes('helper');
+      const isOwner = roles.includes('owner');
+      
+      console.log('HelperPublicProfilePage - loadReviews called:', {
+        userId,
+        userRoles: roles,
+        isHelper,
+        isOwner,
+        helperUserRoles: helperUser?.roles
+      });
+      
+      // If user has both roles, try helper first, then owner if helper has no reviews
+      // Otherwise, use the role they have
+      let role = isHelper ? 'helper' : (isOwner ? 'owner' : 'helper');
+      let reviewsData: Review[] = [];
+      
+      // Try loading reviews for the primary role
+      console.log(`HelperPublicProfilePage - Loading reviews with role=${role} for userId=${userId}`);
+      let response = await api.get<Review[]>(`/users/${userId}/reviews?role=${role}`);
+      console.log('HelperPublicProfilePage - Reviews API response:', response);
+      
+      if (response.success && response.data) {
+        reviewsData = Array.isArray(response.data) ? response.data : [];
+        console.log(`HelperPublicProfilePage - Reviews for ${role}:`, {
+          reviewsCount: reviewsData.length,
+          reviews: reviewsData
+        });
+      }
+      
+      // If user has both roles and primary role has no reviews, try the other role
+      if (isHelper && isOwner && reviewsData.length === 0 && role === 'helper') {
+        console.log('HelperPublicProfilePage - No helper reviews found, trying owner reviews');
+        role = 'owner';
+        response = await api.get<Review[]>(`/users/${userId}/reviews?role=${role}`);
+        console.log('HelperPublicProfilePage - Owner reviews API response:', response);
+        
+        if (response.success && response.data) {
+          reviewsData = Array.isArray(response.data) ? response.data : [];
+          console.log(`HelperPublicProfilePage - Reviews for ${role}:`, {
+            reviewsCount: reviewsData.length,
+            reviews: reviewsData
+          });
+        }
+      }
+      
+      console.log(`HelperPublicProfilePage - Final reviews for ${userId}:`, {
+        reviewsCount: reviewsData.length,
+        reviews: reviewsData,
+        userRoles: roles,
+        finalRole: role
+      });
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error('Failed to load reviews:', error);
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
     }
   };
 
@@ -135,8 +230,11 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
   }
 
   const completedTasks = helperUser.completedTasks || 0;
-  const rating = helperUser.rating || 0;
-  const reviewCount = helperUser.reviewCount || 0;
+  // Determine rating based on user's role
+  const isHelper = helperUser.roles?.includes('helper');
+  const rating = isHelper 
+    ? (helperUser.helperRating || helperUser.rating || 0)
+    : (helperUser.ownerRating || helperUser.rating || 0);
 
   const handleBack = () => {
     // Use browser history to go back to previous page
@@ -292,16 +390,71 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
           </Card>
         )}
 
-        {/* Reviews Section - Placeholder */}
+        {/* Reviews Section */}
         <Card className="p-6 border-0 shadow-lg">
           <h2 className="mb-4" style={{ fontWeight: 600, fontSize: '20px' }}>Reviews</h2>
-          <EmptyState
-            icon={Star}
-            title={reviewCount === 0 ? "No reviews yet" : `${reviewCount} review${reviewCount !== 1 ? 's' : ''}`}
-            description={reviewCount === 0 
-              ? "This helper hasn't received any reviews yet." 
-              : "Reviews will be displayed here."}
-          />
+          {loadingReviews ? (
+            <div className="text-center py-8">
+              <div className="text-muted-foreground">Loading reviews...</div>
+            </div>
+          ) : reviews.length === 0 ? (
+            <EmptyState
+              icon={Star}
+              title="No reviews yet"
+              description={
+                helperUser.roles?.includes('helper') 
+                  ? "This helper hasn't received any reviews yet."
+                  : "This owner hasn't received any reviews yet."
+              }
+            />
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <Card key={review._id} className="p-6 border-0 shadow-md">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={review.reviewer.profilePhoto} alt={review.reviewer.name} />
+                      <AvatarFallback className="bg-primary text-white">
+                        {review.reviewer.name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 style={{ fontWeight: 600 }}>{review.reviewer.name}</h4>
+                            <span className="text-sm text-muted-foreground">
+                              for "{review.task.title}"
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= review.rating
+                                    ? "text-yellow-500 fill-yellow-500"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {review.comment && (
+                        <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
+                          {review.comment}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>
