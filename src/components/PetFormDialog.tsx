@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -32,6 +32,8 @@ interface PetFormDialogProps {
 
 export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     type: "dog",
@@ -71,7 +73,7 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
     }
   }, [open, pet]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -144,11 +146,61 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
     }
   };
 
-  const handleImageUpload = () => {
-    // For now, just allow pasting URL
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select an image file (JPEG, PNG, GIF)");
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size too large. Maximum 5MB allowed.");
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      // Create FormData for file upload
+      const uploadFormData = new FormData();
+      uploadFormData.append('image', file);
+      
+      console.log('Uploading file:', file.name, file.type, file.size);
+      
+      // Upload image to server
+      const response = await api.post<{ photoUrl: string }>('/pets/upload-photo', uploadFormData);
+      
+      console.log('Upload response:', response);
+      
+      if (response.success && response.data?.photoUrl) {
+        // Update form data with new photo URL
+        setFormData(prev => ({ ...prev, image: response.data!.photoUrl }));
+        toast.success("Photo uploaded successfully!");
+      } else {
+        const errorMsg = response.message || "Failed to upload photo";
+        console.error("Upload failed:", errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload photo. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleImageUrlInput = () => {
+    // Allow pasting URL as alternative
     const url = prompt("Enter image URL:");
-    if (url) {
-      setFormData({ ...formData, image: url });
+    if (url && url.trim()) {
+      setFormData({ ...formData, image: url.trim() });
     }
   };
 
@@ -178,6 +230,7 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
                     type="button"
                     onClick={() => setFormData({ ...formData, image: "" })}
                     className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-100"
+                    disabled={isUploading}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -187,9 +240,35 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
                   <Upload className="w-8 h-8 text-muted-foreground" />
                 </div>
               )}
-              <Button type="button" variant="outline" onClick={handleImageUpload}>
-                Upload Photo
-              </Button>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  disabled={isUploading}
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploading ? "Uploading..." : "Upload from Computer"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleImageUrlInput}
+                  disabled={isUploading}
+                  className="w-full"
+                >
+                  Or Enter URL
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -289,7 +368,7 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || isUploading}>
               {loading ? "Saving..." : pet?._id ? "Save Changes" : "Add Pet"}
             </Button>
           </DialogFooter>

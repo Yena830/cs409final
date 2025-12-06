@@ -1,12 +1,22 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 
 // Configure storage for uploaded files
 // In production, you might want to use a cloud storage service instead
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Allow overriding the upload directory with an environment variable
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads/';
+    // Use absolute path to ensure consistency
+    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`Created upload directory: ${uploadDir}`);
+    }
+    
+    console.log('Upload destination:', uploadDir);
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
