@@ -63,18 +63,57 @@ router.post('/', async (req, res) => {
 // PATCH /api/users/:id/add-role - Add a role to a user (protected)
 router.patch('/:id/add-role', verifyToken, addRole);
 
-// GET /api/users/:id/reviews - Get reviews for a user
+// GET /api/users/:id/reviews - Get reviews received by a user (as reviewee)
+// Query parameter: role - 'owner' or 'helper' to filter reviews by role
 router.get('/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
-    const reviews = await Review.find({ reviewee: id })
+    const { role } = req.query; // 'owner' or 'helper'
+    
+    // Find reviews where the user is the reviewee (received reviews, not given reviews)
+    let reviews = await Review.find({ reviewee: id })
       .populate('reviewer', 'name profilePhoto')
-      .populate('task', 'title')
+      .populate({
+        path: 'task',
+        select: 'title postedBy assignedTo',
+        populate: [
+          { path: 'postedBy', select: '_id' },
+          { path: 'assignedTo', select: '_id' }
+        ]
+      })
       .sort({ createdAt: -1 });
+
+    // Filter by role if specified
+    if (role === 'helper') {
+      // For helper: only show reviews where user is the assigned helper (owner reviewed helper)
+      reviews = reviews.filter(review => {
+        const task = review.task;
+        if (!task || !task.assignedTo) return false;
+        const assignedToId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        return assignedToId === id;
+      });
+    } else if (role === 'owner') {
+      // For owner: only show reviews where user is the task owner (helper reviewed owner)
+      reviews = reviews.filter(review => {
+        const task = review.task;
+        if (!task || !task.postedBy) return false;
+        const postedById = task.postedBy._id ? task.postedBy._id.toString() : task.postedBy.toString();
+        return postedById === id;
+      });
+    }
+
+    // Clean up task data for response (only send title, not full task object)
+    const cleanedReviews = reviews.map(review => ({
+      ...review.toObject(),
+      task: {
+        _id: review.task._id,
+        title: review.task.title,
+      },
+    }));
 
     res.json({
       success: true,
-      data: reviews,
+      data: cleanedReviews,
     });
   } catch (error) {
     res.status(500).json({
