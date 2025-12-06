@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, DollarSign, Search, Filter, ArrowLeft, Check, Heart, MessageSquare, Shield } from "lucide-react";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { Star, MapPin, Clock, DollarSign, Search, ArrowLeft, Check, Heart, MessageSquare, Shield } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { toast } from "sonner";
 import { api } from "../lib/api";
@@ -147,15 +146,6 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     onNavigate("messages", { selectedUserId: helperId });
   };
 
-  const handleMessage = (helperId: string) => {
-    if (!isAuthenticated) {
-      toast.error("Please log in to message helpers.");
-      onNavigate("auth");
-      return;
-    }
-    onNavigate("messages", { selectedUserId: helperId });
-  };
-
   return (
     <div className="min-h-screen pt-24 pb-24 px-4">
       <div className="max-w-[1200px] mx-auto">
@@ -210,14 +200,10 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
         </div>
 
         {/* Results Count */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <p className="text-muted-foreground">
             Showing <span className="text-foreground">{filteredHelpers.length}</span> helpers
           </p>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="w-4 h-4" />
-            More Filters
-          </Button>
         </div>
 
         {/* Loading State */}
@@ -289,7 +275,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             toggleFavorite(helper._id);
                           }}
@@ -386,7 +372,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                   <div className="flex gap-2">
                     <Button
                       className="flex-1 bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         handleContact(helper._id);
                       }}
@@ -397,7 +383,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                     <Button
                       variant="outline"
                       className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         handleViewProfile(helper._id);
                       }}

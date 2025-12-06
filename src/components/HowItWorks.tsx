@@ -1,4 +1,3 @@
-import React from "react";
 import { Card } from "./ui/card";
 import { ClipboardList, Users, Heart } from "lucide-react";
 
