@@ -372,16 +372,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
                   </div>
                   <Badge className="bg-primary text-white" style={{ fontWeight: 600 }}>{typeDisplay}</Badge>
                 </div>
-                {isTaskOwner && task.status === "open" && task.applicants && task.applicants.length > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setApplicantsDialogOpen(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Users className="w-4 h-4" />
-                    View Applications ({task.applicants.length})
-                  </Button>
-                )}
               </div>
 
               <div className="grid sm:grid-cols-3 gap-4 mb-6">
@@ -470,7 +460,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
             )}
           </div>
 
-          {/* Second Row: Pet Information + Helper Info */}
+          {/* Second Row: Pet Information + Helper Info / Task Status */}
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Pet Information - Takes 2 columns */}
             {task.pet && (
@@ -496,217 +486,246 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
               </Card>
             )}
 
-            {/* Helper Info - Takes 1 column */}
-            {task.assignedTo && (
-              <Card className="p-6 border-0 shadow-md h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
-                  <PawPrint className="w-5 h-5 text-primary" />
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assigned Helper</h3>
-                </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <Avatar 
-                    className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
-                  >
-                    <AvatarImage src={task.assignedTo.profilePhoto} alt={task.assignedTo.name} />
-                    <AvatarFallback className="bg-primary text-white">
-                      {task.assignedTo.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 
-                        style={{ fontWeight: 600 }}
-                        className="cursor-pointer hover:text-primary transition-colors"
+            {/* Right column content - depends on task status */}
+            {task.status === "open" ? (
+              /* Task Status - Show when status is open */
+              ((isTaskOwner || isTaskHelper)) && (
+                <Card className="p-4 border-0 shadow-md h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
+                    <Badge 
+                      className="bg-accent !text-white border-transparent"
+                    >
+                      {task.status?.replace(/_/g, ' ') || 'unknown'}
+                    </Badge>
+                  </div>
+                  {isTaskOwner && task.applicants && task.applicants.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setApplicantsDialogOpen(true)}
+                      className="flex items-center gap-2 w-full mt-auto"
+                    >
+                      <Users className="w-4 h-4" />
+                      View Applications ({task.applicants.length})
+                    </Button>
+                  )}
+                </Card>
+              )
+            ) : (
+              /* Helper Info - Show when status is not open */
+              <>
+                {task.assignedTo && (
+                  <Card className="p-6 border-0 shadow-md h-full flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                      <PawPrint className="w-5 h-5 text-primary" />
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assigned Helper</h3>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar 
+                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
                       >
-                        {task.assignedTo.name}
-                      </h4>
-                      <Shield className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-sm" style={{ fontWeight: 600 }}>4.9</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-auto">
-                  <Button 
-                    className="flex-1 bg-primary hover:bg-primary/90 text-white"
-                    onClick={() => onNavigate('messages', { selectedUserId: task.assignedTo?._id })}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Message
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {/* Apply Card - Show for helpers when no helper assigned */}
-            {isHelper() && !isTaskOwner && task.status === "open" && !task.assignedTo && (
-              <Card className="p-6 border-0 shadow-md bg-secondary/20 h-full flex flex-col">
-                <h3 className="mb-4" style={{ fontWeight: 600 }}>Apply for this Task</h3>
-                <div className="space-y-4 flex-1">
-                  <div className="bg-white p-4 rounded-xl">
-                    <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
-                    <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
-                    <div className="text-sm text-muted-foreground">per session</div>
-                  </div>
-                  <Button 
-                    size="lg" 
-                    className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                    onClick={handleApply}
-                    disabled={applying || hasApplied}
-                  >
-                    {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
-                  </Button>
-                  {hasApplied && (
-                    <p className="text-xs text-center text-primary">
-                      Your application has been submitted
-                    </p>
-                  )}
-                  {!hasApplied && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      You'll be able to chat with the owner after applying
-                    </p>
-                  )}
-                </div>
-              </Card>
-            )}
-          </div>
-
-          {/* Third Row: Task Status - Full Width */}
-          <div>
-            {/* Apply Card - Show for helpers when helper is assigned */}
-            {isHelper() && !isTaskOwner && task.status === "open" && task.assignedTo && (
-              <Card className="p-6 border-0 shadow-md bg-secondary/20">
-                <h3 className="mb-4" style={{ fontWeight: 600 }}>Apply for this Task</h3>
-                <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-xl">
-                    <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
-                    <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
-                    <div className="text-sm text-muted-foreground">per session</div>
-                  </div>
-                  <Button 
-                    size="lg" 
-                    className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                    onClick={handleApply}
-                    disabled={applying || hasApplied}
-                  >
-                    {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
-                  </Button>
-                  {hasApplied && (
-                    <p className="text-xs text-center text-primary">
-                      Your application has been submitted
-                    </p>
-                  )}
-                  {!hasApplied && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      You'll be able to chat with the owner after applying
-                    </p>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Review Button - Show for owner or helper when completed */}
-            {((isTaskOwner || isTaskHelper)) && (
-              <Card className="p-4 border-0 shadow-md">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
-                  <Badge 
-                    className={
-                      task.status === 'open' 
-                        ? 'bg-accent !text-white border-transparent' 
-                        : task.status === 'in_progress'
-                        ? 'bg-chart-5 !text-white border-transparent'
-                        : task.status === 'completed'
-                        ? 'bg-primary !text-white border-transparent'
-                        : 'bg-secondary !text-secondary-foreground border-transparent'
-                    }
-                  >
-                    {task.status?.replace(/_/g, ' ') || 'unknown'}
-                  </Badge>
-                </div>
-                {task.status === "in_progress" && isTaskOwner && (
-                  <Button 
-                    size="lg"
-                    className="w-full !bg-green-600 hover:!bg-green-700 !text-white"
-                    onClick={handleCompleteTask}
-                    disabled={completing}
-                  >
-                    {completing ? 'Completing...' : 'Complete Task'}
-                  </Button>
-                )}
-                {task.status === "completed" && (
-                  <div className="space-y-4">
-                    {/* Review received from the other party */}
-                    {receivedReview && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground">
-                            Review from {receivedReview.reviewerName}:
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= receivedReview.rating
-                                    ? "text-yellow-500 fill-yellow-500"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
+                        <AvatarImage src={task.assignedTo.profilePhoto} alt={task.assignedTo.name} />
+                        <AvatarFallback className="bg-primary text-white">
+                          {task.assignedTo.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 
+                            style={{ fontWeight: 600 }}
+                            className="cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
+                          >
+                            {task.assignedTo.name}
+                          </h4>
+                          <Shield className="w-4 h-4 text-primary" />
                         </div>
-                        {receivedReview.comment && (
-                          <div className="bg-muted/50 p-3 rounded-lg">
-                            <p className="text-sm text-foreground">{receivedReview.comment}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* User's own review */}
-                    {hasSubmittedReview && userReview ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground">Your Review:</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= userReview.rating
-                                    ? "text-yellow-500 fill-yellow-500"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm" style={{ fontWeight: 600 }}>4.9</span>
                         </div>
-                        {userReview.comment && (
-                          <div className="bg-muted/50 p-3 rounded-lg">
-                            <p className="text-sm text-foreground">{userReview.comment}</p>
-                          </div>
-                        )}
                       </div>
-                    ) : (
+                    </div>
+
+                    <div className="flex gap-2 mt-auto">
                       <Button 
-                        size="lg"
-                        className="w-full !bg-primary hover:!bg-primary/90 !text-white"
-                        onClick={() => setReviewDialogOpen(true)}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                        onClick={() => onNavigate('messages', { selectedUserId: task.assignedTo?._id })}
                       >
-                        Click to Review
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  </Card>
                 )}
-              </Card>
+
+                {/* Apply Card - Show for helpers when no helper assigned */}
+                {isHelper() && !isTaskOwner && !task.assignedTo && (
+                  <Card className="p-6 border-0 shadow-md bg-secondary/20 h-full flex flex-col">
+                    <h3 className="mb-4" style={{ fontWeight: 600 }}>Apply for this Task</h3>
+                    <div className="space-y-4 flex-1">
+                      <div className="bg-white p-4 rounded-xl">
+                        <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
+                        <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
+                        <div className="text-sm text-muted-foreground">per session</div>
+                      </div>
+                      <Button 
+                        size="lg" 
+                        className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                        onClick={handleApply}
+                        disabled={applying || hasApplied}
+                      >
+                        {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
+                      </Button>
+                      {hasApplied && (
+                        <p className="text-xs text-center text-primary">
+                          Your application has been submitted
+                        </p>
+                      )}
+                      {!hasApplied && (
+                        <p className="text-xs text-center text-muted-foreground">
+                          You'll be able to chat with the owner after applying
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </>
             )}
           </div>
+
+          {/* Third Row: Task Status / Apply Card - Full Width (only when status is not open) */}
+          {task.status !== "open" && (
+            <div>
+              {/* Apply Card - Show for helpers when helper is assigned */}
+              {isHelper() && !isTaskOwner && task.assignedTo && (
+                <Card className="p-6 border-0 shadow-md bg-secondary/20">
+                  <h3 className="mb-4" style={{ fontWeight: 600 }}>Apply for this Task</h3>
+                  <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-xl">
+                      <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
+                      <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
+                      <div className="text-sm text-muted-foreground">per session</div>
+                    </div>
+                    <Button 
+                      size="lg" 
+                      className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                      onClick={handleApply}
+                      disabled={applying || hasApplied}
+                    >
+                      {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
+                    </Button>
+                    {hasApplied && (
+                      <p className="text-xs text-center text-primary">
+                        Your application has been submitted
+                      </p>
+                    )}
+                    {!hasApplied && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        You'll be able to chat with the owner after applying
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Task Status - Show for owner or helper when status is not open */}
+              {((isTaskOwner || isTaskHelper)) && (
+                <Card className="p-4 border-0 shadow-md">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
+                    <Badge 
+                      className={
+                        task.status === 'in_progress'
+                          ? 'bg-chart-5 !text-white border-transparent'
+                          : task.status === 'completed'
+                          ? 'bg-primary !text-white border-transparent'
+                          : 'bg-secondary !text-secondary-foreground border-transparent'
+                      }
+                    >
+                      {task.status?.replace(/_/g, ' ') || 'unknown'}
+                    </Badge>
+                  </div>
+                  {task.status === "in_progress" && isTaskOwner && (
+                    <Button 
+                      size="lg"
+                      className="w-full !bg-green-600 hover:!bg-green-700 !text-white"
+                      onClick={handleCompleteTask}
+                      disabled={completing}
+                    >
+                      {completing ? 'Completing...' : 'Complete Task'}
+                    </Button>
+                  )}
+                  {task.status === "completed" && (
+                    <div className="space-y-4">
+                      {/* Review received from the other party */}
+                      {receivedReview && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">
+                              Review from {receivedReview.reviewerName}:
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= receivedReview.rating
+                                      ? "text-yellow-500 fill-yellow-500"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {receivedReview.comment && (
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                              <p className="text-sm text-foreground">{receivedReview.comment}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* User's own review */}
+                      {hasSubmittedReview && userReview ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">Your Review:</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= userReview.rating
+                                      ? "text-yellow-500 fill-yellow-500"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {userReview.comment && (
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                              <p className="text-sm text-foreground">{userReview.comment}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Button 
+                          size="lg"
+                          className="w-full !bg-primary hover:!bg-primary/90 !text-white"
+                          onClick={() => setReviewDialogOpen(true)}
+                        >
+                          Click to Review
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
