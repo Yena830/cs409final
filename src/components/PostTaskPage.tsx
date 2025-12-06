@@ -91,7 +91,7 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
         setPets(response.data);
         if (response.data.length === 0) {
           toast.error("You need to add a pet first before posting a task");
-          setTimeout(() => onNavigate('profile', { userType: 'owner' }), 2000);
+          setTimeout(() => onNavigate('owner-profile'), 2000);
         }
       } else {
         toast.error("Failed to load pets");
@@ -170,7 +170,7 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
       <div className="min-h-screen pt-24 pb-24 px-4 flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="text-muted-foreground mb-4">You need to add a pet first before posting a task.</div>
-          <Button onClick={() => onNavigate('profile', { userType: 'owner' })}>
+          <Button onClick={() => onNavigate('owner-profile')}>
             Go to Profile
           </Button>
         </div>
@@ -245,7 +245,7 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="type">Service Type *</Label>
-                <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+                <Select value={formData.type} onValueChange={(value: string) => handleInputChange('type', value)}>
                   <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Select service type" />
                   </SelectTrigger>
@@ -315,7 +315,7 @@ export function PostTaskPage({ onNavigate }: PostTaskPageProps) {
               
               <div className="space-y-2">
                 <Label htmlFor="pet">Select a Pet *</Label>
-                <Select value={formData.pet} onValueChange={(value) => handleInputChange('pet', value)}>
+                <Select value={formData.pet} onValueChange={(value: string) => handleInputChange('pet', value)}>
                   <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Select your pet" />
                   </SelectTrigger>
