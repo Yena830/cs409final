@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import { Users } from "lucide-react";
-import { User } from "lucide-react";
+import { User as UserIcon } from "lucide-react";
 
 interface ProfilePageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
@@ -82,8 +82,21 @@ interface HelperDetails {
   specialties: string[];
 }
 
+// Backend Pet interface (matching PetFormDialog)
+interface BackendPet {
+  _id?: string;
+  name: string;
+  type: string;
+  breed?: string;
+  height?: number;
+  weight?: number;
+  temperament?: string;
+  photos?: string[];
+  owner?: string;
+}
+
 export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps) {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, setUser } = useUser();
   const [loading, setLoading] = useState(true);
   const [loadingPets, setLoadingPets] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -223,12 +236,39 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
   const myTasks = userType === 'owner' ? postedTasks : assignedTasks;
 
   const handleSaveProfile = async (data: ProfileData) => {
-    // TODO: Implement API call to update user profile
-    // For now, this would need to call PUT /api/users/:id or similar
-    toast.info("Profile update feature will be implemented with backend API");
+    if (!user || !user._id) return;
+    
+    try {
+      // Prepare data for update
+      const updateData = {
+        name: data.username,
+        bio: data.bio,
+        profilePhoto: data.profilePhoto
+      };
+      
+      // Call API to update user profile
+      const response = await api.put(`/users/${user._id}`, updateData);
+      
+      if (response.success && response.data) {
+        // Update user context with new data
+        setUser({
+          ...user,
+          name: response.data.name,
+          bio: response.data.bio,
+          profilePhoto: response.data.profilePhoto
+        });
+        
+        toast.success("Profile updated successfully!");
+      } else {
+        toast.error(response.message || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error("Failed to update profile. Please try again.");
+    }
   };
 
-  const handleSavePet = async (savedPet: Pet) => {
+  const handleSavePet = async (savedPet: BackendPet) => {
     // PetFormDialog now returns the created/updated pet object from backend
     // Toast notifications are handled in PetFormDialog
     if (savedPet._id) {
@@ -236,10 +276,10 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
       const existingIndex = myPets.findIndex(p => p._id === savedPet._id);
       if (existingIndex >= 0) {
         // Update existing pet in state
-        setMyPets(prev => prev.map((p, idx) => idx === existingIndex ? savedPet : p));
+        setMyPets(prev => prev.map((p, idx) => idx === existingIndex ? savedPet as Pet : p));
       } else {
         // Add new pet to state - add to beginning of array
-        setMyPets(prev => [savedPet, ...prev]);
+        setMyPets(prev => [savedPet as Pet, ...prev]);
       }
     }
   };
@@ -523,7 +563,7 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
         )}
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pets' | 'tasks' | 'reviews')} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'pets' | 'tasks' | 'reviews')} className="w-full">
           <TabsList className={`grid w-full md:w-auto ${userType === 'owner' ? 'grid-cols-2' : 'grid-cols-2'} mb-6`}>
             {userType === 'owner' && <TabsTrigger value="pets">My Pets</TabsTrigger>}
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
@@ -673,7 +713,7 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
                                   )}
                                   {task.postedBy && (
                                     <p className="flex items-center gap-2">
-                                      <User className="w-4 h-4" />
+                                      <UserIcon className="w-4 h-4" />
                                       Owner: {task.postedBy.name}
                                     </p>
                                   )}

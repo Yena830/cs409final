@@ -18,6 +18,11 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from uploads directory (this should be outside the codebase in production)
+// In production, you would use a dedicated storage service like AWS S3 or similar
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadDir));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -52,4 +57,3 @@ const startServer = async () => {
 };
 
 startServer();
-
