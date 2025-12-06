@@ -4,7 +4,11 @@ import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Star, MapPin, Shield, Edit, Heart, MessageCircle, Calendar, CheckCircle2, TrendingUp, Clock, PawPrint, Award, Briefcase, ArrowLeft } from "lucide-react";
+import { 
+  Star, MapPin, Shield, Edit, Heart, MessageCircle, Calendar, 
+  CheckCircle2, TrendingUp, Clock, PawPrint, Award, Briefcase, 
+  ArrowLeft, PlusCircle
+} from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { EmptyState } from "./EmptyState";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -118,6 +122,7 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>('tasks');
+  const [addingRole, setAddingRole] = useState(false); // 新增状态用于跟踪角色添加过程
 
   // Profile data from real user (computed for EditProfileDialog compatibility)
   const getProfileData = (): ProfileData => ({
@@ -316,6 +321,40 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
     }
   };
 
+  // 添加切换角色的功能
+  const handleAddRole = async (role: 'owner' | 'helper') => {
+    if (!user) return;
+    
+    // 检查用户是否已经有这个角色
+    if (user.roles.includes(role)) {
+      toast.info(`You already have the ${role} role`);
+      return;
+    }
+    
+    setAddingRole(true);
+    try {
+      const response = await api.post<any>('/users/add-role', { role });
+      
+      if (response.success && response.data) {
+        // 更新用户上下文
+        setUser(response.data);
+        toast.success(`Successfully added ${role} role!`);
+        
+        // 如果添加的是helper角色且当前在owner profile页面，提示用户可以切换视图
+        if (role === 'helper' && userType === 'owner') {
+          toast.info('You can now switch to helper view');
+        }
+      } else {
+        toast.error(response.message || `Failed to add ${role} role`);
+      }
+    } catch (error) {
+      console.error('Failed to add role:', error);
+      toast.error(`Failed to add ${role} role. Please try again.`);
+    } finally {
+      setAddingRole(false);
+    }
+  };
+
   const handleSavePet = async (savedPet: BackendPet) => {
     // PetFormDialog now returns the created/updated pet object from backend
     // Toast notifications are handled in PetFormDialog
@@ -445,19 +484,58 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '32px' }}>{user?.name || "User"}</h1>
+                    {user?.roles && user.roles.length > 1 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {user.roles.join(' & ')}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <span>{user?.email || ""}</span>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary transition-all"
-                  onClick={() => setEditProfileOpen(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit Profile
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary transition-all"
+                    onClick={() => setEditProfileOpen(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Profile
+                  </Button>
+                  
+                  {/* 添加角色切换按钮 */}
+                  {!addingRole && user && (
+                    <>
+                      {userType === 'owner' && !user.roles.includes('helper') && (
+                        <Button 
+                          variant="outline" 
+                          className="gap-2 hover:bg-accent hover:border-accent hover:text-accent-foreground transition-all"
+                          onClick={() => handleAddRole('helper')}
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          Become Helper
+                        </Button>
+                      )}
+                      {userType === 'helper' && !user.roles.includes('owner') && (
+                        <Button 
+                          variant="outline" 
+                          className="gap-2 hover:bg-accent hover:border-accent hover:text-accent-foreground transition-all"
+                          onClick={() => handleAddRole('owner')}
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          Become Owner
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  
+                  {addingRole && (
+                    <Button variant="outline" disabled>
+                      Adding Role...
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <p className="text-muted-foreground mb-6">
