@@ -305,8 +305,8 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
   };
 
   const handleViewApplicantProfile = (applicantId: string | number) => {
-    // Navigate to helper profile
-    toast.info("Opening applicant profile...");
+    // Navigate to public helper profile
+    onNavigate('helper-public-profile', { userId: applicantId });
   };
 
   const handleConfirmHelper = async (applicantId: string | number) => {
