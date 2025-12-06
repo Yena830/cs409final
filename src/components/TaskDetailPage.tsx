@@ -15,6 +15,7 @@ interface TaskDetailPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
   taskId?: string;
   returnTo?: string;
+  activeTab?: string;
 }
 
 interface Task {
@@ -54,7 +55,7 @@ interface Task {
   }>;
 }
 
-export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageProps) {
+export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: TaskDetailPageProps) {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
@@ -362,7 +363,8 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo }: TaskDetailPageP
           variant="ghost" 
           onClick={() => {
             if (returnTo === 'owner-profile' || returnTo === 'helper-profile' || returnTo === 'profile') {
-              onNavigate(returnTo);
+              // Navigate back to profile page with activeTab parameter
+              onNavigate(returnTo, { activeTab: activeTab || 'tasks' });
             } else {
               onNavigate('tasks');
             }

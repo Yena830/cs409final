@@ -20,6 +20,7 @@ import { User as UserIcon } from "lucide-react";
 interface ProfilePageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
   userType?: 'owner' | 'helper';
+  activeTab?: 'pets' | 'tasks' | 'reviews';
 }
 
 interface Pet {
@@ -111,13 +112,20 @@ interface BackendPet {
   owner?: string;
 }
 
-export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps) {
+export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initialActiveTab }: ProfilePageProps) {
   const { user, loading: userLoading, setUser } = useUser();
   const [loading, setLoading] = useState(true);
   const [loadingPets, setLoadingPets] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>('tasks');
+  const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>(initialActiveTab || 'tasks');
+  
+  // Update activeTab when initialActiveTab prop changes
+  useEffect(() => {
+    if (initialActiveTab) {
+      setActiveTab(initialActiveTab);
+    }
+  }, [initialActiveTab]);
 
   // Profile data from real user (computed for EditProfileDialog compatibility)
   const getProfileData = (): ProfileData => ({
@@ -775,7 +783,11 @@ export function ProfilePage({ onNavigate, userType = 'owner' }: ProfilePageProps
                                 variant="outline" 
                                 size="sm" 
                                 className="hover:bg-primary/10 hover:border-primary hover:text-primary"
-                                onClick={() => onNavigate('task-detail', { taskId: task._id, returnTo: 'profile' })}
+                                onClick={() => onNavigate('task-detail', { 
+                                  taskId: task._id, 
+                                  returnTo: userType === 'owner' ? 'owner-profile' : 'helper-profile',
+                                  activeTab: 'tasks'
+                                })}
                               >
                                 View
                               </Button>
