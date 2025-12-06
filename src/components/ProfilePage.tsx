@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -119,6 +119,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>(initialActiveTab || 'tasks');
+  const hasRefreshedUser = useRef(false);
   
   // Update activeTab when initialActiveTab prop changes
   useEffect(() => {
@@ -178,6 +179,23 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
 
     // Load initial data based on default tab (tasks)
     const initializeData = async () => {
+      // Refresh user data to get latest rating information (only once)
+      if (!hasRefreshedUser.current) {
+        try {
+          const userResponse = await api.get(`/auth/me`);
+          if (userResponse.success && userResponse.data) {
+            console.log('User data from API:', userResponse.data);
+            console.log('helperRating:', userResponse.data.helperRating);
+            console.log('ownerRating:', userResponse.data.ownerRating);
+            setUser(userResponse.data);
+            hasRefreshedUser.current = true;
+          }
+        } catch (error) {
+          console.error('Failed to refresh user data:', error);
+          // Continue even if refresh fails
+        }
+      }
+      
       // Load tasks by default since activeTab starts as 'tasks'
       await loadTasks();
       setLoading(false);
@@ -185,7 +203,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
 
     initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user]);
+  }, [userLoading, user?._id]);
 
   // Load data when tab changes
   useEffect(() => {
@@ -520,7 +538,21 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                         <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                       </div>
                       <div>
-                        <div className="text-yellow-600" style={{ fontWeight: 700, fontSize: '24px' }}>—</div>
+                        <div className="text-yellow-600" style={{ fontWeight: 700, fontSize: '24px' }}>
+                          {(() => {
+                            const rating = userType === 'helper' ? user?.helperRating : user?.ownerRating;
+                            // Log for debugging
+                            if (user) {
+                              console.log(`ProfilePage - userType: ${userType}, rating:`, rating, 'user:', {
+                                helperRating: user.helperRating,
+                                ownerRating: user.ownerRating,
+                                fullUser: user
+                              });
+                            }
+                            // Show rating if it exists and is greater than 0, otherwise show —
+                            return rating && rating > 0 ? rating.toFixed(1) : '—';
+                          })()}
+                        </div>
                         <div className="text-xs text-muted-foreground">Rating</div>
                       </div>
                     </div>

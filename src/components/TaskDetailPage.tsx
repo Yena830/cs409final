@@ -40,13 +40,13 @@ interface Task {
     _id: string;
     name: string;
     profilePhoto?: string;
-    rating?: number;
+    ownerRating?: number;
   };
   assignedTo?: {
     _id: string;
     name: string;
     profilePhoto?: string;
-    rating?: number;
+    helperRating?: number;
   };
   applicants?: Array<{
     _id: string;
@@ -176,10 +176,10 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
         setTask(response.data);
         // Debug: log rating values
         if (response.data.postedBy) {
-          console.log('Owner rating:', response.data.postedBy.rating);
+          console.log('Owner rating:', response.data.postedBy.ownerRating);
         }
         if (response.data.assignedTo) {
-          console.log('Helper rating:', response.data.assignedTo.rating);
+          console.log('Helper rating:', response.data.assignedTo.helperRating);
         }
       } else {
         toast.error("Failed to load task");
@@ -469,7 +469,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                       <span className="text-sm" style={{ fontWeight: 600 }}>
-                        {formatRating(task.postedBy?.rating)}
+                        {formatRating(task.postedBy?.ownerRating)}
                       </span>
                     </div>
                   </div>
@@ -540,7 +540,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                 )}
                 
                 {/* Non-owner: Apply button */}
-                {!isTaskOwner && isAuthenticated && (
+                {!isTaskOwner && isAuthenticated && task.status === "open" &&(
                   <div className="mt-auto space-y-4">
                     <div className="bg-secondary/20 p-4 rounded-xl">
                       <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
@@ -601,7 +601,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                           <span className="text-sm" style={{ fontWeight: 600 }}>
-                            {formatRating(task.assignedTo?.rating)}
+                            {formatRating(task.assignedTo?.helperRating)}
                           </span>
                         </div>
                       </div>

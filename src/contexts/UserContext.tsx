@@ -13,6 +13,8 @@ export interface User {
   bio?: string;
   profilePhoto?: string;
   createdAt?: string;
+  ownerRating?: number;
+  helperRating?: number;
 }
 
 interface UserContextType {
