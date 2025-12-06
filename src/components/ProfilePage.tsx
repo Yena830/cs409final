@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -122,9 +122,8 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
   const [loadingPets, setLoadingPets] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>('tasks');
-  const [addingRole, setAddingRole] = useState(false); // 新增状态用于跟踪角色添加过程
   const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>(initialActiveTab || 'tasks');
+  const [addingRole, setAddingRole] = useState(false); // 新增状态用于跟踪角色添加过程
   const hasRefreshedUser = useRef(false);
 
   // Update activeTab when initialActiveTab prop changes
