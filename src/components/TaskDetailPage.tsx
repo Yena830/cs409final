@@ -75,6 +75,8 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
     createdAt: string;
     reviewerName: string;
   } | null>(null);
+  const [allTasksForCalculation, setAllTasksForCalculation] = useState<any[]>([]);
+  const [formattedApplicants, setFormattedApplicants] = useState<any[]>([]);
   const { user, isHelper, isAuthenticated } = useUser();
 
   useEffect(() => {
@@ -93,6 +95,138 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
       checkReviewStatus();
     }
   }, [task, user, taskId]);
+
+  // Load all tasks to calculate completed tasks for applicants
+  useEffect(() => {
+    const loadAllTasks = async () => {
+      try {
+        const response = await api.get('/tasks');
+        if (response.success && response.data) {
+          setAllTasksForCalculation(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (error) {
+        console.error('Failed to load tasks for calculation:', error);
+      }
+    };
+    loadAllTasks();
+  }, []);
+
+  // Format applicants for ApplicantsDialog - fetch full user data for each applicant
+  // This ensures we have the latest helperRating and other info, matching HelperPublicProfilePage
+  useEffect(() => {
+    const formatApplicants = async () => {
+      if (!task?.applicants || task.applicants.length === 0) {
+        setFormattedApplicants([]);
+        return;
+      }
+      
+      // Fetch full user data for each applicant to get the latest helperRating
+      const applicantsWithFullData = await Promise.all(
+        task.applicants.map(async (app: any) => {
+          try {
+            // Fetch full user data to get the latest helperRating
+            const userResponse = await api.get(`/users/${app._id}`);
+            if (userResponse.success && userResponse.data) {
+              const fullUserData = userResponse.data;
+              
+              // Count completed tasks for this specific applicant helper
+              const applicantId = app._id?.toString() || app._id;
+              const completedTasks = allTasksForCalculation.filter((t: any) => {
+                const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+                return assignedToId === applicantId && t.status === 'completed';
+              }).length;
+              
+              // Use the same rating logic as HelperPublicProfilePage
+              // Use data from full user fetch, not from task.applicants populate
+              const rating = fullUserData.helperRating || fullUserData.rating || 0;
+              
+              // Get review count for this helper
+              let reviewCount = 0;
+              try {
+                const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+                if (reviewsResponse.success && reviewsResponse.data) {
+                  reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+                }
+              } catch (error) {
+                console.error(`Failed to fetch reviews for ${app.name}:`, error);
+              }
+              
+              console.log(`TaskDetailPage - Applicant ${app.name} (${applicantId}):`, {
+                fromTask: {
+                  helperRating: app.helperRating,
+                  rating: app.rating
+                },
+                fromUserAPI: {
+                  helperRating: fullUserData.helperRating,
+                  rating: fullUserData.rating
+                },
+                finalRating: rating,
+                reviewCount,
+                completedTasks
+              });
+              
+              return {
+                id: app._id,
+                name: fullUserData.name || app.name,
+                avatar: fullUserData.profilePhoto || app.profilePhoto || '',
+                rating: rating > 0 ? rating : 0,
+                reviewCount: reviewCount,
+                location: fullUserData.location || app.location || '',
+                tasksCompleted: completedTasks,
+                responseRate: 100, // Default
+                verified: false, // Default
+                experience: fullUserData.bio || app.bio || '', // Use bio as experience/introduction
+                certifications: fullUserData.specialties || app.specialties || [], // Use specialties as certifications
+                introduction: fullUserData.bio || app.bio || '',
+              };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user data for ${app._id}:`, error);
+          }
+          
+          // Fallback to task.applicants data if user fetch fails
+          const applicantId = app._id?.toString() || app._id;
+          const completedTasks = allTasksForCalculation.filter((t: any) => {
+            const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+            return assignedToId === applicantId && t.status === 'completed';
+          }).length;
+          
+          const rating = app.helperRating || app.rating || 0;
+          
+          // Get review count for this helper (fallback)
+          let reviewCount = 0;
+          try {
+            const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+            if (reviewsResponse.success && reviewsResponse.data) {
+              reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch reviews for ${app.name}:`, error);
+          }
+          
+          return {
+            id: app._id,
+            name: app.name,
+            avatar: app.profilePhoto || '',
+            rating: rating > 0 ? rating : 0,
+            reviewCount: reviewCount,
+            location: app.location || '',
+            tasksCompleted: completedTasks,
+            responseRate: 100,
+            verified: false,
+            experience: app.bio || '',
+            certifications: app.specialties || [],
+            introduction: app.bio || '',
+          };
+        })
+      );
+      
+      // Filter out any null/undefined results
+      setFormattedApplicants(applicantsWithFullData.filter(Boolean));
+    };
+    
+    formatApplicants();
+  }, [task?.applicants, allTasksForCalculation]);
 
   const checkReviewStatus = async () => {
     if (!taskId || !user || !task) return;
@@ -371,21 +505,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
     return numRating.toFixed(1);
   };
 
-  // Format applicants for ApplicantsDialog
-  const formattedApplicants = task.applicants?.map(app => ({
-    id: app._id,
-    name: app.name,
-    avatar: app.profilePhoto || '',
-    rating: 4.8,
-    reviewCount: 0,
-    location: '',
-    tasksCompleted: 0,
-    responseRate: 100,
-    verified: false,
-    experience: '',
-    certifications: [],
-    introduction: '',
-  })) || [];
 
   return (
     <div className="min-h-screen pt-24 pb-24 px-4">
