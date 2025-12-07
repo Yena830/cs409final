@@ -304,10 +304,9 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         );
         setPostedTasks(posted);
         
-        // Filter tasks assigned to this user (for helpers)
+        // Helpers should only see tasks where they've been selected (assigned)
         const assigned = allTasks.filter(task => 
-          task.assignedTo?._id === user._id || 
-          task.applicants?.some(applicant => applicant._id === user._id)
+          task.assignedTo?._id === user._id
         );
         // Debug: Log task statuses for helpers
         if (userType === 'helper' && assigned.length > 0) {

@@ -707,7 +707,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                           : task.status === 'in_progress'
                           ? 'bg-chart-5 !text-white border-transparent'
                           : task.status === 'pending_confirmation'
-                          ? 'bg-yellow-500 !text-white border-transparent'
+                          ? 'bg-chart-7 !text-white border-transparent'
                           : task.status === 'completed'
                           ? 'bg-primary !text-white border-transparent'
                           : 'bg-secondary !text-secondary-foreground border-transparent'

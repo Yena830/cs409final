@@ -36,6 +36,10 @@ interface Task {
     ownerRating?: number;
   };
   status: string;
+  assignedTo?: {
+    _id: string;
+    name: string;
+  };
 }
 
 export function TasksPage({ onNavigate }: TasksPageProps) {
@@ -89,8 +93,10 @@ export function TasksPage({ onNavigate }: TasksPageProps) {
     );
   }
   
-  // Only show open tasks
-  filteredTasks = filteredTasks.filter(task => task.status === "open");
+  // Only show tasks that are still looking for a helper (not assigned yet)
+  filteredTasks = filteredTasks.filter(
+    task => (task.status === "open" || task.status === "pending") && !task.assignedTo
+  );
 
   // Format rating for display
   const formatRating = (rating?: number): string => {

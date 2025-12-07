@@ -28,6 +28,10 @@ interface Task {
     photos?: string[];
   };
   status: string;
+  assignedTo?: {
+    _id: string;
+    name: string;
+  };
 }
 
 export function LandingPage({ onNavigate }: LandingPageProps) {
@@ -44,9 +48,9 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
     try {
       const response = await api.get<Task[]>("/tasks");
       if (response.success && response.data) {
-        // Filter for open tasks only and take first 3
+        // Show tasks still seeking a helper (open or pending) and take first 3
         const openTasks = response.data
-          .filter(task => task.status === 'open')
+          .filter(task => (task.status === 'open' || task.status === 'pending') && !task.assignedTo)
           .slice(0, 3);
         setFeaturedTasks(openTasks);
       }
