@@ -200,6 +200,11 @@ class ApiClient {
     return this.del<any>(`/messages/conversation/${userId}`);
   }
 
+  // 标记与特定用户的对话为已读
+  async markConversationAsRead(userId: string): Promise<ApiResponse<any>> {
+    return this.put<any>(`/messages/conversation/${userId}/read`, {});
+  }
+
   // 获取用户详细信息
   async getUserDetails(userId: string): Promise<ApiResponse<any>> {
     return this.get<any>(`/users/${userId}`);

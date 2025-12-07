@@ -29,6 +29,9 @@ const io = new Server(server, {
   }
 });
 
+// 导出 io 实例，供其他模块使用
+export const getIO = () => io;
+
 // Middleware
 app.use(cors({
   origin: "http://localhost:3000", // 前端地址
