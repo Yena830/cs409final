@@ -14,6 +14,7 @@ export interface User {
   profilePhoto?: string;
   location?: string;
   expectedHourlyRate?: number;
+  specialties?: string[];
   createdAt?: string;
   ownerRating?: number;
   helperRating?: number;

@@ -199,13 +199,27 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
             console.log('User data from API:', userResponse.data);
             console.log('helperRating:', userResponse.data.helperRating);
             console.log('ownerRating:', userResponse.data.ownerRating);
+            console.log('specialties:', userResponse.data.specialties);
             setUser(userResponse.data);
+            // Load specialties from user data into helperDetails
+            if (userType === 'helper' && userResponse.data.specialties) {
+              setHelperDetails(prev => ({
+                ...prev,
+                specialties: userResponse.data.specialties || []
+              }));
+            }
             hasRefreshedUser.current = true;
           }
         } catch (error) {
           console.error('Failed to refresh user data:', error);
           // Continue even if refresh fails
         }
+      } else if (userType === 'helper' && user?.specialties) {
+        // If user data already loaded, sync specialties to helperDetails
+        setHelperDetails(prev => ({
+          ...prev,
+          specialties: user.specialties || []
+        }));
       }
 
       // Load tasks by default since activeTab starts as 'tasks'
@@ -478,8 +492,33 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     setPetFormOpen(true);
   };
 
-  const handleSaveHelperDetails = (data: HelperDetails) => {
-    setHelperDetails(data);
+  const handleSaveHelperDetails = async (data: HelperDetails) => {
+    if (!user || !user._id) {
+      toast.error('User not found');
+      return;
+    }
+    
+    try {
+      // Save specialties to backend
+      const response = await api.put(`/users/${user._id}`, {
+        specialties: data.specialties
+      });
+      
+      if (response.success && response.data) {
+        setHelperDetails(data);
+        // Update user context with new specialties
+        setUser({
+          ...user,
+          specialties: response.data.specialties
+        });
+        toast.success("Professional details updated successfully!");
+      } else {
+        toast.error(response.message || "Failed to update professional details");
+      }
+    } catch (error) {
+      console.error('Failed to save helper details:', error);
+      toast.error("Failed to update professional details. Please try again.");
+    }
   };
 
   const handleViewApplicants = (task: Task) => {

@@ -92,6 +92,7 @@ export const register = async (req, res) => {
       profilePhoto: user.profilePhoto,
       location: user.location,
       expectedHourlyRate: user.expectedHourlyRate,
+      specialties: user.specialties,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -159,6 +160,7 @@ export const login = async (req, res) => {
       profilePhoto: user.profilePhoto,
       location: user.location,
       expectedHourlyRate: user.expectedHourlyRate,
+      specialties: user.specialties,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
