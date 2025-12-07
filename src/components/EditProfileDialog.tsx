@@ -13,6 +13,7 @@ interface ProfileData {
   username: string;
   bio: string;
   location: string;
+  expectedHourlyRate: number;
   profilePhoto: string;
 }
 
@@ -137,6 +138,30 @@ export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: E
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               placeholder="e.g., New York, NY"
+            />
+          </div>
+
+          {/* Expected Hourly Rate */}
+          <div className="space-y-2">
+            <Label htmlFor="expectedHourlyRate">Expected Hourly Rate ($)</Label>
+            <Input
+              id="expectedHourlyRate"
+              type="number"
+              min="0"
+              step="1"
+              value={formData.expectedHourlyRate === 0 ? '' : formData.expectedHourlyRate}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setFormData({ ...formData, expectedHourlyRate: 0 });
+                } else {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    setFormData({ ...formData, expectedHourlyRate: numValue });
+                  }
+                }
+              }}
+              placeholder="e.g., 25"
             />
           </div>
 

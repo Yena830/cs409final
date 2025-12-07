@@ -12,6 +12,9 @@ export interface User {
   roles: string[];
   bio?: string;
   profilePhoto?: string;
+  location?: string;
+  expectedHourlyRate?: number;
+  specialties?: string[];
   createdAt?: string;
   ownerRating?: number;
   helperRating?: number;

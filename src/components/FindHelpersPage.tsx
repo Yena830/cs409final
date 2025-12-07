@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, DollarSign, Search, ArrowLeft, Check, Heart, MessageSquare, Shield } from "lucide-react";
+import { Star, MapPin, Clock, DollarSign, Search, ArrowLeft, Heart, MessageSquare, Shield } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { toast } from "sonner";
 import { api } from "../lib/api";
@@ -20,6 +20,7 @@ interface HelperUser extends User {
   createdAt?: string;
   helperRating?: number;
   ownerRating?: number;
+  specialties?: string[];
 }
 
 // UI Helper interface for display
@@ -32,10 +33,8 @@ interface Helper {
   location: string;
   services: string[];
   hourlyRate: string;
-  experience: string;
   availability: string;
   verified: boolean;
-  responseTime: string;
   completedTasks: number;
   bio: string;
   specialties: string[];
@@ -58,7 +57,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     { id: "training", label: "Training" },
   ];
 
-  // Load helpers from backend
+  // Load helpers and tasks from backend
   useEffect(() => {
     loadHelpers();
   }, []);
@@ -66,51 +65,72 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
   const loadHelpers = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get<HelperUser[]>('/users/helpers');
-      if (response.success && response.data) {
-        const helperUsers = Array.isArray(response.data) ? response.data : [];
+      // Load both helpers and tasks in parallel
+      const [helpersResponse, tasksResponse] = await Promise.all([
+        api.get<HelperUser[]>('/users/helpers'),
+        api.get<any[]>('/tasks')
+      ]);
+
+      let tasks: any[] = [];
+      if (tasksResponse.success && tasksResponse.data) {
+        tasks = Array.isArray(tasksResponse.data) ? tasksResponse.data : [];
+      }
+
+      if (helpersResponse.success && helpersResponse.data) {
+        const helperUsers = Array.isArray(helpersResponse.data) ? helpersResponse.data : [];
         // Map backend User data to UI Helper format
         const mappedHelpers: Helper[] = helperUsers.map((user) => {
-          // Calculate experience from createdAt
-          const yearsSinceJoin = user.createdAt
-            ? Math.floor((new Date().getTime() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 365))
-            : 0;
-          const experience = yearsSinceJoin > 0 ? `${yearsSinceJoin} year${yearsSinceJoin > 1 ? 's' : ''}` : 'New helper';
+          // Use profilePhoto or empty string (Avatar will show fallback with initials)
+          const image = user.profilePhoto || '';
 
-          // Default services based on available task types (could be enhanced)
-          const defaultServices = ["Dog Walking", "Pet Sitting", "Pet Boarding"];
-          
-          // Use profilePhoto or default image
-          const image = user.profilePhoto || 'https://images.unsplash.com/photo-1565069859254-6248c5a4bc67?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
-
-          // Debug: log user data to check helperRating
+          // Debug: log user data to check helperRating and specialties
           console.log(`FindHelpersPage - User ${user.name}:`, {
             helperRating: user.helperRating,
             ownerRating: user.ownerRating,
+            profilePhoto: user.profilePhoto,
+            specialties: user.specialties,
             fullUser: user
           });
 
+          // Format expected hourly rate - just the number
+          const hourlyRate = user.expectedHourlyRate && user.expectedHourlyRate > 0 
+            ? user.expectedHourlyRate.toFixed(0) 
+            : '—';
+
+          // Calculate completed tasks: only count tasks that are actually assigned to this helper and completed
+          const completedTasks = tasks.filter(task => {
+            if (!task.assignedTo) return false;
+            const assignedToId = task.assignedTo._id 
+              ? (typeof task.assignedTo._id === 'string' ? task.assignedTo._id : String(task.assignedTo._id))
+              : (typeof task.assignedTo === 'string' ? task.assignedTo : String(task.assignedTo));
+            const userId = typeof user._id === 'string' ? user._id : String(user._id);
+            return assignedToId === userId && task.status === 'completed';
+          }).length;
+
+          // Use specialties from user, same as HelperPublicProfilePage
+          const services = (user.specialties && Array.isArray(user.specialties) && user.specialties.length > 0)
+            ? user.specialties
+            : [];
+
           return {
             _id: user._id,
-            name: user.name,
+            name: user.name || 'Unknown Helper',
             image,
             rating: (user.helperRating !== undefined && user.helperRating !== null && user.helperRating > 0) ? user.helperRating : 0, // Use actual helperRating from backend
             reviewCount: 0, // Default - can be fetched from reviews in future
-            location: "", // Default - could be added to user model later
-            services: defaultServices, // Default - could be derived from task types
-            hourlyRate: "$20-25", // Default - could be added to user model
-            experience,
+            location: user.location || "", // Use actual location from user model
+            services, // Use specialties from user model, same as helper profile
+            hourlyRate, // Use actual expectedHourlyRate from user model
             availability: "Flexible", // Default - could be added to user model
             verified: false, // Default - could be based on account verification
-            responseTime: "< 2 hours", // Default - could be calculated from response times
-            completedTasks: 0, // Default - could be calculated from tasks
-            bio: user.bio || "No bio added yet.",
-            specialties: [], // Default - could be added to user model
+            completedTasks, // Calculate from actual tasks
+            bio: (user.bio && user.bio.trim()) || "No bio added yet.",
+            specialties: user.specialties || [], // Store specialties for consistency
           };
         });
         setHelpers(mappedHelpers);
       } else {
-        toast.error(response.message || "Failed to load helpers");
+        toast.error(helpersResponse.message || "Failed to load helpers");
         setHelpers([]);
       }
     } catch (error) {
@@ -334,25 +354,9 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                     <div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                         <DollarSign className="w-4 h-4" />
-                        <span>Hourly Rate</span>
+                        <span>Expected Hourly Rate</span>
                       </div>
-                      <p style={{ fontWeight: 600 }}>{helper.hourlyRate}/hr</p>
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <Clock className="w-4 h-4" />
-                        <span>Response Time</span>
-                      </div>
-                      <p style={{ fontWeight: 600 }}>{helper.responseTime}</p>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <Check className="w-4 h-4" />
-                        <span>Experience</span>
-                      </div>
-                      <p style={{ fontWeight: 600 }}>{helper.experience}</p>
+                      <p style={{ fontWeight: 600 }}>{helper.hourlyRate}</p>
                     </div>
 
                     <div>

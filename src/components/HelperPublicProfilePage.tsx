@@ -8,7 +8,7 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { Star, Shield, MessageCircle, CheckCircle2, Clock, ArrowLeft, Briefcase, MessageSquare } from "lucide-react";
+import { Star, Shield, MessageCircle, CheckCircle2, Clock, ArrowLeft, Briefcase, MessageSquare, MapPin, TrendingUp } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { toast } from "sonner";
 import { api } from "../lib/api";
@@ -29,6 +29,8 @@ interface HelperUser extends UserType {
   reviewCount?: number;
   completedTasks?: number;
   verified?: boolean;
+  location?: string;
+  expectedHourlyRate?: number;
 }
 
 interface Review {
@@ -47,6 +49,14 @@ interface Review {
   createdAt: string;
 }
 
+interface Task {
+  _id: string;
+  status: string;
+  assignedTo?: {
+    _id: string;
+  };
+}
+
 export function HelperPublicProfilePage({ onNavigate, userId, helperId }: HelperPublicProfilePageProps) {
   // Support both userId and helperId for backward compatibility
   const targetUserId = helperId || userId;
@@ -55,6 +65,7 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
   const [helperUser, setHelperUser] = useState<HelperUser | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
 
   // Load helper user data
   useEffect(() => {
@@ -102,6 +113,8 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
         });
         // Use setTimeout to ensure state is updated, but pass roles directly
         loadReviews(userData._id, userData.roles);
+        // Load tasks to calculate tasks done
+        loadTasks(userData._id);
       } else {
         toast.error(response.message || "Failed to load helper profile");
         onNavigate('find-helpers');
@@ -112,6 +125,26 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
       onNavigate('find-helpers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTasks = async (userId: string) => {
+    if (!userId) return;
+    
+    try {
+      const response = await api.get<Task[]>('/tasks');
+      if (response.success && response.data) {
+        const allTasks = Array.isArray(response.data) ? response.data : [];
+        
+        // Filter tasks assigned to this user (same logic as ProfilePage)
+        const assigned = allTasks.filter(task => 
+          task.assignedTo?._id === userId
+        );
+        setAssignedTasks(assigned);
+      }
+    } catch (error) {
+      console.error('Failed to load tasks:', error);
+      setAssignedTasks([]);
     }
   };
 
@@ -229,7 +262,10 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
     );
   }
 
-  const completedTasks = helperUser.completedTasks || 0;
+  // Calculate tasks done: only count tasks that are actually assigned to the user and completed
+  const completedTasks = assignedTasks.filter(t => 
+    t.assignedTo?._id === helperUser._id && t.status === 'completed'
+  ).length;
   // Determine rating based on user's role
   const isHelper = helperUser.roles?.includes('helper');
   const rating = isHelper 
@@ -280,6 +316,15 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
                       </div>
                     )}
                   </div>
+                  <div className="flex flex-col gap-1 text-muted-foreground">
+                    <span>{helperUser.email || ""}</span>
+                    {helperUser.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{helperUser.location}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <Button 
                   className="bg-primary hover:bg-primary/90 text-white gap-2"
@@ -325,13 +370,13 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
                 <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-chart-5/10 rounded-full flex items-center justify-center">
-                      <Clock className="w-6 h-6 text-chart-5" />
+                      <TrendingUp className="w-6 h-6 text-chart-5" />
                     </div>
                     <div>
                       <div className="text-chart-5" style={{ fontWeight: 700, fontSize: '24px' }}>
-                        {helperUser.createdAt ? new Date(helperUser.createdAt).getFullYear() : new Date().getFullYear()}
+                        ${helperUser.expectedHourlyRate ? helperUser.expectedHourlyRate.toFixed(0) : '—'}
                       </div>
-                      <div className="text-xs text-muted-foreground">Member Since</div>
+                      <div className="text-xs text-muted-foreground">Expected hourly rate</div>
                     </div>
                   </div>
                 </Card>

@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    location: {
+      type: String,
+      default: '',
+    },
+    expectedHourlyRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    specialties: {
+      type: [String],
+      default: [],
+    },
     rating: {
       type: Number,
       default: 0,
