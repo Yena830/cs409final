@@ -136,8 +136,17 @@ export const uploadProfilePhoto = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    console.log('Upload profile photo request:', {
+      userId: userId,
+      hasFile: !!req.file,
+      file: req.file,
+      body: req.body,
+      headers: req.headers['content-type']
+    });
+
     // Check if file was uploaded
     if (!req.file) {
+      console.log('No file in request');
       return res.status(400).json({
         success: false,
         message: 'No file uploaded',
@@ -163,6 +172,12 @@ export const uploadProfilePhoto = async (req, res) => {
 
     // Return updated user without password
     const updatedUser = await User.findById(userId).select('-password');
+
+    console.log('Profile photo uploaded successfully:', {
+      userId: userId,
+      photoUrl: user.profilePhoto,
+      filename: req.file.filename
+    });
 
     res.json({
       success: true,

@@ -91,10 +91,14 @@ class ApiClient {
       };
     }
     
+    // For error responses, extract message from data
+    const responseData = data.data || data;
+    const responseMessage = data.message || (response.ok ? undefined : `Server returned ${response.status} ${response.statusText}`);
+    
     return {
       success: response.ok,
-      data: data.data || data,
-      message: data.message,
+      data: responseData,
+      message: responseMessage,
     };
   }
 
@@ -114,12 +118,17 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+  async post<T = any>(path: string, body: any, options?: { headers?: HeadersInit }): Promise<ApiResponse<T>> {
     try {
+      // For FormData (file uploads), let the browser set Content-Type automatically
+      const isFormData = body instanceof FormData;
+      const defaultHeaders = isFormData ? this.getAuthHeadersWithoutContentType() : this.getAuthHeaders();
+      const headers = { ...defaultHeaders, ...options?.headers };
+      
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(body),
+        headers,
+        body: isFormData ? body : JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);
@@ -129,6 +138,18 @@ class ApiClient {
         message: error instanceof Error ? error.message : 'Network error',
       };
     }
+  }
+
+  // Helper method to get auth headers without Content-Type (for FormData)
+  private getAuthHeadersWithoutContentType(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {};
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   }
 
   async put<T = any>(path: string, body: any): Promise<ApiResponse<T>> {

@@ -120,6 +120,7 @@ interface BackendPet {
 export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initialActiveTab }: ProfilePageProps) {
   const { user, loading: userLoading, setUser } = useUser();
   const [loading, setLoading] = useState(true);
+  const [avatarKey, setAvatarKey] = useState(0);
   const [loadingPets, setLoadingPets] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -618,8 +619,17 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         {/* Profile Header */}
         <Card className="p-8 mb-6 border-0 shadow-lg">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <Avatar className="w-32 h-32">
-              <AvatarImage src={user?.profilePhoto || ""} alt={user?.name || ""} />
+            <Avatar className="w-32 h-32" key={`avatar-${avatarKey}-${user?.profilePhoto}`}>
+              <AvatarImage 
+                src={user?.profilePhoto ? `${user.profilePhoto}?t=${avatarKey}` : ""} 
+                alt={user?.name || ""}
+                onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                  console.error('Avatar image failed to load:', user?.profilePhoto, e);
+                }}
+                onLoad={() => {
+                  console.log('Avatar image loaded successfully:', user?.profilePhoto);
+                }}
+              />
               <AvatarFallback className="bg-primary text-white text-3xl">
                 {user?.name?.substring(0, 2).toUpperCase() || "U"}
               </AvatarFallback>
@@ -1152,6 +1162,30 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         onOpenChange={setEditProfileOpen}
         profileData={getProfileData()}
         onSave={handleSaveProfile}
+        onPhotoUploaded={(photoUrl) => {
+          // Update user context immediately when photo is uploaded
+          console.log('onPhotoUploaded called with:', photoUrl);
+          console.log('Current user before update:', user);
+          
+          // Use a small delay to ensure state updates are processed
+          setTimeout(() => {
+            if (user) {
+              const updatedUser = {
+                ...user,
+                profilePhoto: photoUrl
+              };
+              console.log('Updating user context with:', updatedUser);
+              setUser(updatedUser);
+              
+              // Force avatar refresh by updating key
+              setAvatarKey(prev => {
+                const newKey = prev + 1;
+                console.log('Updating avatarKey from', prev, 'to', newKey);
+                return newKey;
+              });
+            }
+          }, 100);
+        }}
       />
 
       <PetFormDialog
