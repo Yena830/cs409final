@@ -16,23 +16,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Trash2 } from "lucide-react";
+import { api } from "../lib/api";
+import { useUser } from "../hooks/useUser";
+import io, { Socket } from "socket.io-client";
 
 interface MessagesPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
-  selectedUserId?: number;
+  selectedUserId?: string; 
+}
+
+interface User {
+  _id: string;
+  name: string;
+  profilePhoto?: string;
 }
 
 interface Message {
-  id: number;
-  sender: string;
+  _id: string;
+  sender: User;
+  recipient: User;
   content: string;
-  time: string;
-  isOwn: boolean;
-  status?: "sent" | "delivered" | "read";
+  timestamp: string;
+  read: boolean;
 }
 
 interface Conversation {
-  id: number;
+  _id: string;
   name: string;
   avatar: string;
   initials: string;
@@ -42,309 +52,291 @@ interface Conversation {
   online: boolean;
   taskType?: string;
   messages: Message[];
+  participantId: string;
 }
 
 export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) {
-  const [selectedChat, setSelectedChat] = useState<number | null>(null);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isConversationListCollapsed, setIsConversationListCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   
   const emojis = ["😊", "❤️", "👍", "🐕", "🐱", "🎉", "✨", "🙏", "😂", "🤗", "🌟", "🐾"];
 
-  const conversations: Conversation[] = [
-    {
-      id: 1,
-      name: "Sarah M.",
-      avatar: "",
-      initials: "SM",
-      lastMessage: "Sounds great! See you tomorrow morning.",
-      time: "2m ago",
-      unread: 2,
-      online: true,
-      taskType: "Dog Walking",
-      messages: [
-        {
-          id: 1,
-          sender: "Sarah M.",
-          content: "Hi! I saw your application for walking Max. Your profile looks great!",
-          time: "10:30 AM",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "Thank you! I'd love to help. I have 3 years of experience with Golden Retrievers.",
-          time: "10:32 AM",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "Sarah M.",
-          content: "That's wonderful! Max is very friendly but has lots of energy. Are you available tomorrow morning at 8 AM?",
-          time: "10:35 AM",
-          isOwn: false,
-        },
-        {
-          id: 4,
-          sender: "You",
-          content: "Yes, I'm available! I can meet you at the Central Park entrance. I'll bring some treats too! 🐕",
-          time: "10:36 AM",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 5,
-          sender: "Sarah M.",
-          content: "Sounds great! See you tomorrow morning.",
-          time: "10:38 AM",
-          isOwn: false,
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "John D.",
-      avatar: "",
-      initials: "JD",
-      lastMessage: "Thanks for taking care of Luna!",
-      time: "1h ago",
-      unread: 0,
-      online: false,
-      taskType: "Cat Feeding",
-      messages: [
-        {
-          id: 1,
-          sender: "John D.",
-          content: "Hi! I'm going out of town this weekend. Could you feed Luna on Saturday and Sunday?",
-          time: "Yesterday",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "Of course! I'd be happy to help. What time would work best?",
-          time: "Yesterday",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "John D.",
-          content: "Around 8 AM and 6 PM would be perfect. I'll leave the key with the doorman.",
-          time: "Yesterday",
-          isOwn: false,
-        },
-        {
-          id: 4,
-          sender: "You",
-          content: "Perfect! I'll make sure Luna is well taken care of. Any special instructions?",
-          time: "Yesterday",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 5,
-          sender: "John D.",
-          content: "Just give her the wet food in the fridge and make sure she has fresh water. She loves to play with the feather toy!",
-          time: "9:15 AM",
-          isOwn: false,
-        },
-        {
-          id: 6,
-          sender: "You",
-          content: "Got it! I'll send you updates with photos 📸",
-          time: "9:20 AM",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 7,
-          sender: "John D.",
-          content: "Thanks for taking care of Luna!",
-          time: "1h ago",
-          isOwn: false,
-        },
-      ],
-    },
-    {
-      id: 3,
-      name: "Emily R.",
-      avatar: "",
-      initials: "ER",
-      lastMessage: "Can we reschedule for next week?",
-      time: "3h ago",
-      unread: 1,
-      online: true,
-      taskType: "Pet Sitting",
-      messages: [
-        {
-          id: 1,
-          sender: "Emily R.",
-          content: "Hi! I need someone to watch my two cats while I'm traveling. Are you available from Dec 15-20?",
-          time: "2 days ago",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "Hi Emily! I'm available for those dates. I'd love to help with your cats!",
-          time: "2 days ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "Emily R.",
-          content: "Great! They're pretty independent but need feeding twice a day and some playtime.",
-          time: "2 days ago",
-          isOwn: false,
-        },
-        {
-          id: 4,
-          sender: "You",
-          content: "That sounds perfect. I can stop by morning and evening. Would you like me to send daily updates?",
-          time: "2 days ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 5,
-          sender: "Emily R.",
-          content: "That would be wonderful! Actually, something came up. Can we reschedule for next week?",
-          time: "3h ago",
-          isOwn: false,
-        },
-      ],
-    },
-    {
-      id: 4,
-      name: "Mike T.",
-      avatar: "",
-      initials: "MT",
-      lastMessage: "Perfect! I'll bring some treats.",
-      time: "1d ago",
-      unread: 0,
-      online: false,
-      taskType: "Dog Walking",
-      messages: [
-        {
-          id: 1,
-          sender: "Mike T.",
-          content: "Hey! I saw you're looking for dog walking help. I walk my own dog every day and would love to help with yours too!",
-          time: "3 days ago",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "That's great! What kind of dog do you have?",
-          time: "3 days ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "Mike T.",
-          content: "I have a Labrador named Buddy. He's super friendly and loves playing with other dogs!",
-          time: "3 days ago",
-          isOwn: false,
-        },
-        {
-          id: 4,
-          sender: "You",
-          content: "That sounds perfect! My dog Charlie would love a walking buddy. When are you usually available?",
-          time: "3 days ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 5,
-          sender: "Mike T.",
-          content: "Perfect! I'll bring some treats.",
-          time: "1d ago",
-          isOwn: false,
-        },
-      ],
-    },
-    {
-      id: 5,
-      name: "Lisa K.",
-      avatar: "",
-      initials: "LK",
-      lastMessage: "Your rabbit is adorable! 🐰",
-      time: "2d ago",
-      unread: 0,
-      online: false,
-      taskType: "Pet Boarding",
-      messages: [
-        {
-          id: 1,
-          sender: "Lisa K.",
-          content: "Hi! I noticed you offer pet boarding. Do you have experience with rabbits?",
-          time: "1 week ago",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "Yes! I actually have a rabbit of my own. What kind do you have?",
-          time: "1 week ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "Lisa K.",
-          content: "Your rabbit is adorable! 🐰",
-          time: "2d ago",
-          isOwn: false,
-        },
-      ],
-    },
-    {
-      id: 6,
-      name: "David P.",
-      avatar: "",
-      initials: "DP",
-      lastMessage: "Thanks again for your help!",
-      time: "5d ago",
-      unread: 0,
-      online: false,
-      taskType: "Pet Sitting",
-      messages: [
-        {
-          id: 1,
-          sender: "David P.",
-          content: "Thank you so much for watching Whiskers last week. He seemed very happy when I got back!",
-          time: "5d ago",
-          isOwn: false,
-        },
-        {
-          id: 2,
-          sender: "You",
-          content: "It was my pleasure! Whiskers is such a sweet cat. Feel free to reach out anytime you need help!",
-          time: "5d ago",
-          isOwn: true,
-          status: "read",
-        },
-        {
-          id: 3,
-          sender: "David P.",
-          content: "Thanks again for your help!",
-          time: "5d ago",
-          isOwn: false,
-        },
-      ],
-    },
-  ];
+  // Fetch conversation list
+  const loadConversations = async () => {
+    if (!user) return [];
+    
+    try {
+      // Fetch real conversation list from API
+      const response = await api.getUserConversations();
+      let userConversations: Conversation[] = [];
+      
+      if (response.success && response.data) {
+        // Convert API response to Conversation format
+        const rawConversations = response.data;
+        userConversations = [];
+        
+        // Get detailed information for each conversation participant
+        for (const conv of rawConversations) {
+          // Skip self
+          if (conv.participantId === user._id) {
+            continue;
+          }
+          
+          let userName = "Unknown User";
+          let userAvatar = "";
+          let userInitials = "UU";
+          
+          try {
+            const userResponse = await api.getUserDetails(conv.participantId);
+            if (userResponse.success && userResponse.data) {
+              userName = userResponse.data.name;
+              userAvatar = userResponse.data.profilePhoto || "";
+              userInitials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            }
+          } catch (error) {
+            console.error("Failed to get user details:", error);
+          }
+          
+          userConversations.push({
+            _id: conv.participantId,
+            name: userName,
+            avatar: userAvatar,
+            initials: userInitials,
+            lastMessage: conv.lastMessage,
+            time: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            unread: conv.unread,
+            online: false,
+            taskType: "Pet Care",
+            messages: [],
+            participantId: conv.participantId
+          });
+        }
+      }
+      
+      // Ensure user with selectedUserId is in conversation list
+      if (selectedUserId && selectedUserId !== user._id) {
+        // Check if conversation with this user already exists
+        const existingConversation = userConversations.find(conv => conv.participantId === selectedUserId);
+        if (!existingConversation) {
+          // Get user info from API
+          let userName = "Selected Helper";
+          let userAvatar = "";
+          let userInitials = "SH";
+          
+          try {
 
-  const selectedConversation = conversations.find((conv) => conv.id === selectedChat);
-  const filteredConversations = conversations.filter((conv) =>
-    conv.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+            const response = await api.getUserDetails(selectedUserId);
+            if (response.success && response.data) {
+              userName = response.data.name;
+              userAvatar = response.data.profilePhoto || "";
+
+              userInitials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            }
+          } catch (error) {
+            console.error("Failed to get user details:", error);
+          }
+          
+          const newConversation: Conversation = {
+            _id: "selected",
+            name: userName,
+            avatar: userAvatar,
+            initials: userInitials,
+            lastMessage: "",
+            time: "Just now",
+            unread: 0,
+            online: true,
+            taskType: "Pet Care",
+            messages: [],
+            participantId: selectedUserId
+          };
+          
+          // Add new conversation to the beginning of the list
+          userConversations = [newConversation, ...userConversations];
+        }
+      }
+      
+      setConversations(userConversations);
+      return userConversations;
+    } catch (error) {
+      console.error("Failed to load conversation list:", error);
+      // Show empty list on error
+      setConversations([]);
+      return [];
+    }
+  };
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (user) {
+      // Connect to WebSocket server
+      socketRef.current = io("http://localhost:3001", {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+      
+      
+      // Join room
+      socketRef.current.emit("join_room", user._id);
+      
+      // Listen for connection success event  
+      socketRef.current.on("connect", () => {
+        // Removed connection success log
+      });
+      
+      // Listen for connection error event
+      socketRef.current.on("connect_error", (error) => {
+        // Removed connection error log
+      });
+      
+      // Listen for disconnect event
+      socketRef.current.on("disconnect", (reason) => {
+        // Removed disconnect log
+      });
+      
+      // Listen for receive message
+      socketRef.current.on("receive_message", (message: Message) => {
+        // Ensure message is not from user self
+        if (message.sender._id === user._id) {
+          return;
+        }
+        
+        // Use functional update to avoid closure issue
+        setConversations(prev => {
+          // Check if conversation with this user already exists
+          const existingIndex = prev.findIndex(conv => conv.participantId === message.sender._id);
+          
+          if (existingIndex >= 0) {
+            // Update existing conversation 
+            const updatedConversations = [...prev];
+            updatedConversations[existingIndex] = {
+              ...updatedConversations[existingIndex],
+              lastMessage: message.content,
+              time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              unread: updatedConversations[existingIndex].unread + 1
+            };
+            return updatedConversations;
+          } else {
+            // Create new conversation (if it doesn't exist)
+            return [{
+              _id: message.sender._id,
+              name: message.sender.name || "Unknown User",
+              avatar: message.sender.profilePhoto || "",
+              initials: message.sender.name ? message.sender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : "UU",
+              lastMessage: message.content,
+              time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              unread: 1,
+              online: false,
+              taskType: "Pet Care",
+              messages: [],
+              participantId: message.sender._id
+            }, ...prev];
+          }
+        });
+        
+        // If currently viewing this conversation, add to message list 
+        if (selectedConversation && selectedConversation.participantId === message.sender._id) {
+          setSelectedConversation(prev => {
+            if (prev) {
+              return {
+                ...prev,
+                messages: [...prev.messages, message]
+              };
+            }
+            return prev;
+          });
+        }
+      });
+      
+      // Cleanup function
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+        }
+      };
+    }
+  }, [user?._id]);
+
+  // Load user conversation list
+  useEffect(() => {
+    let isMounted = true;
+    
+    loadConversations().then((loadedConversations) => {
+      if (!isMounted) return;
+      
+      // If there is selectedUserId, automatically select the corresponding conversation
+      if (selectedUserId && loadedConversations.length > 0) {
+        // Find the corresponding conversation
+        const conversation = loadedConversations.find(conv => conv.participantId === selectedUserId);
+        if (conversation) {
+          setSelectedChat(conversation._id);
+        } else {
+          // If not found, may be because of newly added conversation, use "selected" as ID
+          setSelectedChat("selected");
+        }
+      } else if (loadedConversations.length > 0) {
+        // If no selectedUserId but have conversation list, select the first conversation
+        setSelectedChat(loadedConversations[0]._id);
+      }
+    });
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user, selectedUserId]);
+
+  // Load messages for the selected conversation
+  useEffect(() => {
+    if (!selectedChat || !user) {
+      setSelectedConversation(null);
+      return;
+    }
+    
+    let isMounted = true;
+    
+    const loadMessages = async () => {
+      try {
+        // Get conversation details
+        const conversation = conversations.find(c => c._id === selectedChat);
+        if (!conversation || !isMounted) return;
+        
+        // Fetch real message history from API
+        const response = await api.getConversation(conversation.participantId);
+        if (response.success && response.data && isMounted) {
+          // Only update state if the currently selected chat is still this conversation
+          if (selectedChat === conversation._id) {
+            setSelectedConversation({
+              ...conversation,
+              messages: response.data
+            });
+            
+            // Mark as read
+            setConversations(prev => prev.map(conv => 
+              conv._id === selectedChat ? { ...conv, unread: 0 } : conv
+            ));
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error("Failed to load messages:", error);
+        }
+      }
+    };
+    
+    loadMessages();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedChat, user?._id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -352,19 +344,78 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
 
   useEffect(() => {
     scrollToBottom();
-  }, [selectedChat]);
+  }, [selectedConversation?.messages]);
 
-  // Auto-select chat if selectedUserId is provided
-  useEffect(() => {
-    if (selectedUserId) {
-      setSelectedChat(selectedUserId);
+  const handleSendMessage = async () => {
+    if (message.trim() && user && selectedConversation) {
+      try {
+        // Send message to backend via API
+        const response = await api.sendMessage(selectedConversation.participantId, message);
+        if (response.success && response.data) {
+          const newMessage: Message = response.data;
+          
+          // Update local UI
+          setSelectedConversation(prev => {
+            if (prev) {
+              return {
+                ...prev,
+                messages: [...prev.messages, newMessage],
+                lastMessage: newMessage.content,
+                time: "Just Now"
+              };
+            }
+            return prev;
+          });
+          
+          // Update conversation list
+          setConversations(prev => prev.map(conv => 
+            conv._id === selectedConversation._id ? { 
+              ...conv, 
+              lastMessage: newMessage.content,
+              time: "Just Now"
+            } : conv
+          ));
+          
+          setMessage("");
+        }
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      }
     }
-  }, [selectedUserId]);
+  };
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // Handle send message logic here
-      setMessage("");
+  const filteredConversations = conversations.filter((conv) =>
+    conv.name.toLowerCase().includes(searchQuery.toLowerCase()) && conv.participantId !== user?._id
+  );
+
+  const handleDeleteConversation = async (participantId: string) => {
+    if (!user) return;
+    
+    try {
+      // Confirm delete operation
+      if (!window.confirm("Are you sure you want to delete this conversation record? This action cannot be undone.")) {
+        return;
+      }
+      
+      // Call API to delete conversation
+      const response = await api.deleteConversation(participantId);
+      
+      if (response.success) {
+        // Remove conversation from list
+        setConversations(prev => prev.filter(conv => conv.participantId !== participantId));
+        
+        // If current selected conversation is deleted, clear selected state
+        if (selectedConversation && selectedConversation.participantId === participantId) {
+          setSelectedConversation(null);
+          setSelectedChat(null);
+        }
+        
+        console.log("Conversation record deleted successfully");
+      } else {
+        console.error("Failed to delete conversation record:", response.message);
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation record:", error);
     }
   };
 
@@ -382,7 +433,6 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           </Button>
           <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '40px' }}>Messages</h1>
         </div>
-
         <Card className="border-0 shadow-lg overflow-hidden">
           <div className="flex h-[calc(100vh-200px)] max-h-[700px]">
             {/* Conversations List */}
@@ -400,22 +450,34 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                   />
                 </div>
               </div>
-
+              
               <div className={`overflow-y-auto flex-1 transition-opacity duration-300 ${isConversationListCollapsed ? 'md:opacity-0' : 'md:opacity-100'}`}>
                 {filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                     <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
                       <Search className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <p className="text-muted-foreground">No conversations found</p>
+                    <h3 className="text-primary mb-2" style={{ fontWeight: 600, fontSize: '20px' }}>
+                      No conversations yet
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {selectedUserId 
+                        ? "Start a conversation by sending a message" 
+                        : "Your conversations will appear here"}
+                    </p>
                   </div>
                 ) : (
                   filteredConversations.map((conv) => (
                     <div
-                      key={conv.id}
-                      onClick={() => setSelectedChat(conv.id)}
+                      key={`${conv._id}-${conv.participantId}`}
+                      onClick={() => {
+                        // Use setTimeout to ensure state update order is correct
+                        setTimeout(() => {
+                          setSelectedChat(conv._id);
+                        }, 0);
+                      }}
                       className={`p-4 border-b border-border/50 cursor-pointer transition-all duration-200 ${
-                        selectedChat === conv.id 
+                        selectedChat === conv._id 
                           ? 'bg-primary/10 border-l-4 border-l-primary' 
                           : 'hover:bg-secondary/30 border-l-4 border-l-transparent'
                       }`}
@@ -435,23 +497,48 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <h4 className="truncate" style={{ fontWeight: 600 }}>{conv.name}</h4>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {conv.time}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {conv.time}
+                              </span>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    onClick={(e: React.MouseEvent) => {
+                                      e.stopPropagation();
+                                      handleDeleteConversation(conv.participantId);
+                                    }}
+                                  >
+                                    Delete conversation record
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
                           {conv.taskType && (
                             <Badge variant="outline" className="mb-1 text-xs border-primary/30 text-primary bg-primary/5">
                               {conv.taskType}
                             </Badge>
                           )}
-                          <div className="flex items-center justify-between gap-2">
-                            <p className={`text-sm truncate ${conv.unread > 0 ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontWeight: conv.unread > 0 ? 600 : 400 }}>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground truncate">
                               {conv.lastMessage}
                             </p>
                             {conv.unread > 0 && (
-                              <Badge className="bg-primary text-white shrink-0 h-5 min-w-[20px] rounded-full px-1.5 flex items-center justify-center text-xs shadow-sm">
+                              <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
                                 {conv.unread}
-                              </Badge>
+                              </span>
                             )}
                           </div>
                         </div>
@@ -461,7 +548,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                 )}
               </div>
             </div>
-
+            
             {/* Chat Area */}
             <div className={`flex flex-col bg-white flex-1 min-w-0 ${selectedChat === null ? 'hidden md:flex' : 'flex'}`}>
               {selectedConversation ? (
@@ -488,47 +575,55 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                           <PanelLeftClose className="w-5 h-5" />
                         )}
                       </Button>
-                      <Avatar className="w-11 h-11 border-2 border-primary/20 flex-shrink-0">
+                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
                         <AvatarImage src={selectedConversation.avatar} alt={selectedConversation.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-sm">
                           {selectedConversation.initials}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <h4 style={{ fontWeight: 600 }} className="truncate">{selectedConversation.name}</h4>
-                        {selectedConversation.online ? (
-                          <p className="text-sm text-primary flex items-center gap-1">
-                            <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                            Online
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Offline</p>
+                        <div className="flex items-center gap-2">
+                          <h4 
+                            className="truncate cursor-pointer hover:text-primary transition-colors" 
+                            style={{ fontWeight: 600 }}
+                            onClick={() => onNavigate('helper-public-profile', { userId: selectedConversation.participantId })}
+                          >
+                            {selectedConversation.name}
+                          </h4>
+                          {selectedConversation.online && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          )}
+                        </div>
+                        {selectedConversation.taskType && (
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                            {selectedConversation.taskType}
+                          </Badge>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary hidden sm:flex">
-                        <Phone className="w-5 h-5" />
+                    <div className="flex items-center gap-1">
+                      {/* <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary transition-colors">
+                        <Phone className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary hidden sm:flex">
-                        <Video className="w-5 h-5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary transition-colors">
+                        <Video className="w-4 h-4" />
+                      </Button> */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary">
-                            <MoreVertical className="w-5 h-5" />
+                          <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary transition-colors">
+                            <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onNavigate('profile')}>
+                          {/* <DropdownMenuItem>
                             View Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onNavigate('task-detail')}>
-                            View Task Details
+                          <DropdownMenuItem>
+                            Mute Notifications
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem>
                             Block User
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -543,38 +638,40 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                     </div>
                     
                     {selectedConversation.messages.map((msg, index) => {
-                      const showDateDivider = index > 0 && msg.time.includes("days ago") && !selectedConversation.messages[index - 1].time.includes("days ago");
+                      const showDateDivider = index > 0 && 
+                        new Date(msg.timestamp).toDateString() !== 
+                        new Date(selectedConversation.messages[index - 1].timestamp).toDateString();
                       
                       return (
-                        <div key={msg.id}>
+                        <div key={msg._id}>
                           {showDateDivider && (
                             <div className="flex justify-center my-4">
                               <div className="bg-secondary/50 rounded-full px-4 py-1.5">
-                                <p className="text-xs text-muted-foreground">{msg.time}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(msg.timestamp).toLocaleDateString()}
+                                </p>
                               </div>
                             </div>
                           )}
                           <div
-                            className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                            className={`flex ${msg.sender._id === user?._id ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-3300`}
                           >
                             <div
                               className={`max-w-[75%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                                msg.isOwn
+                                msg.sender._id === user?._id
                                   ? 'bg-gradient-to-br from-primary to-primary/90 text-white rounded-br-sm'
                                   : 'bg-white border border-border text-foreground rounded-bl-sm'
                               }`}
                             >
                               <p className="text-sm leading-relaxed break-words">{msg.content}</p>
-                              <div className={`flex items-center justify-end gap-1 mt-1.5 ${msg.isOwn ? 'text-white/80' : 'text-muted-foreground'}`}>
+                              <div className={`flex items-center justify-end gap-1 mt-1.5 ${msg.sender._id === user?._id ? 'text-white/80' : 'text-muted-foreground'}`}>
                                 <p className="text-xs">
-                                  {msg.time}
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
-                                {msg.isOwn && msg.status && (
+                                {msg.sender._id === user?._id && (
                                   <span>
-                                    {msg.status === "read" ? (
+                                    {msg.read ? (
                                       <CheckCheck className="w-3.5 h-3.5 text-white" />
-                                    ) : msg.status === "delivered" ? (
-                                      <CheckCheck className="w-3.5 h-3.5 text-white/60" />
                                     ) : (
                                       <Check className="w-3.5 h-3.5 text-white/60" />
                                     )}
@@ -588,7 +685,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                     })}
                     <div ref={messagesEndRef} />
                   </div>
-
+                  
                   {/* Message Input */}
                   <div className="p-4 border-t border-border bg-white flex-shrink-0">
                     <div className="flex gap-2 items-end">
@@ -617,14 +714,13 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                         </PopoverContent>
                       </Popover>
 
-                      <Button 
+                      {/* <Button 
                         variant="ghost" 
                         size="icon"
                         className="shrink-0 hover:bg-primary/10 hover:text-primary transition-all hover:scale-110"
                       >
                         <Paperclip className="w-5 h-5" />
-                      </Button>
-
+                      </Button> */}
                       <Input
                         placeholder="Type your message..."
                         value={message}

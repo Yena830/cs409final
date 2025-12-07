@@ -101,6 +101,12 @@ function AppContent() {
       return;
     }
     
+    // Handle messages page with selectedUserId parameter
+    if (page === "messages" && params?.selectedUserId) {
+      navigate(`/messages?selectedUserId=${params.selectedUserId}`);
+      return;
+    }
+    
     // Handle dynamic routes
     if (page === "task-detail" && params?.taskId) {
       const returnTo = params?.returnTo;
@@ -177,6 +183,11 @@ function AppContent() {
     } else if (location.pathname.startsWith("/helper/")) {
       const userId = location.pathname.split("/")[2];
       navigationParams.userId = userId;
+    } else if (location.pathname === "/messages") {
+      // Extract selectedUserId from query string for messages page
+      if (queryParams.selectedUserId) {
+        navigationParams.selectedUserId = queryParams.selectedUserId;
+      }
     }
     
     // Extract activeTab for profile pages

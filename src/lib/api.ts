@@ -11,6 +11,24 @@ interface ApiResponse<T = any> {
   message?: string;
 }
 
+// Message interface
+interface Message {
+  _id: string;
+  sender: {
+    _id: string;
+    name: string;
+    profilePhoto?: string;
+  };
+  recipient: {
+    _id: string;
+    name: string;
+    profilePhoto?: string;
+  };
+  content: string;
+  timestamp: string;
+  read: boolean;
+}
+
 class ApiClient {
   private getAuthHeaders(contentType: string = 'application/json'): HeadersInit {
     const token = localStorage.getItem('token');
@@ -42,7 +60,7 @@ class ApiClient {
       
       throw new Error('Unauthorized');
     }
-
+    
     // Check if response is JSON
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
@@ -96,21 +114,12 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(path: string, body: any, options?: { headers?: HeadersInit }): Promise<ApiResponse<T>> {
+  async post<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
     try {
-      // For FormData (file uploads), let the browser set Content-Type automatically
-      const isFormData = body instanceof FormData;
-      const defaultHeaders = isFormData ? this.getAuthHeadersWithoutContentType() : this.getAuthHeaders();
-      const headers = { ...defaultHeaders, ...options?.headers };
-      
-      // Add debug logging to see what headers are actually being sent
-      console.log('POST Request - Is FormData:', isFormData);
-      console.log('POST Request - Headers:', headers);
-      
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'POST',
-        headers,
-        body: isFormData ? body : JSON.stringify(body),
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);
@@ -120,21 +129,6 @@ class ApiClient {
         message: error instanceof Error ? error.message : 'Network error',
       };
     }
-  }
-
-  // Helper method to get auth headers without Content-Type (for FormData)
-  private getAuthHeadersWithoutContentType(): HeadersInit {
-    const token = localStorage.getItem('token');
-    const headers: HeadersInit = {};
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      console.log('Auth Headers With Token:', headers); // Debug log
-    } else {
-      console.log('No auth token found'); // Debug log
-    }
-    
-    return headers;
   }
 
   async put<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
@@ -185,6 +179,30 @@ class ApiClient {
         message: error instanceof Error ? error.message : 'Network error',
       };
     }
+  }
+
+  // Message-specific methods
+  async getConversation(userId: string): Promise<ApiResponse<Message[]>> {
+    return this.get<Message[]>(`/messages/conversation/${userId}`);
+  }
+
+  async sendMessage(recipient: string, content: string): Promise<ApiResponse<Message>> {
+    return this.post<Message>('/messages', { recipient, content });
+  }
+
+  // 获取用户的所有对话列表
+  async getUserConversations(): Promise<ApiResponse<any[]>> {
+    return this.get<any[]>('/messages/conversations');
+  }
+
+  // 删除用户与特定用户的对话记录
+  async deleteConversation(userId: string): Promise<ApiResponse<any>> {
+    return this.del<any>(`/messages/conversation/${userId}`);
+  }
+
+  // 获取用户详细信息
+  async getUserDetails(userId: string): Promise<ApiResponse<any>> {
+    return this.get<any>(`/users/${userId}`);
   }
 }
 

@@ -57,6 +57,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
           >
             Home
           </button>
+         
           
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 text-foreground hover:text-primary transition-colors">
@@ -105,6 +106,22 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+ 
+          <button 
+            onClick={() => {
+              if (!isAuthenticated) {
+                toast.error("Please log in to continue");
+                onNavigate("auth");
+                return;
+              }
+              onNavigate('messages');
+            }}
+            className={`transition-colors ${currentPage === 'messages' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+          >
+            Messages
+          </button>
+
         </div>
 
         <div className="hidden md:flex items-center gap-3">
