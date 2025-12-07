@@ -232,6 +232,18 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
   }, [userLoading, user?._id]);
 
   // Load data when tab changes
+  // Load pets when page loads (for owner) - needed for stats display
+  useEffect(() => {
+    if (userLoading || loading) return;
+    if (!user || !user._id) return;
+    
+    // Load pets for owner users on initial load (needed for stats)
+    if (userType === 'owner' && myPets.length === 0 && !loadingPets) {
+      loadPets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userLoading, loading, userType]);
+
   useEffect(() => {
     // Wait for user loading to complete
     if (userLoading || loading) return;
