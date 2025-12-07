@@ -3,7 +3,10 @@ import User from '../models/user.js';
 import Review from '../models/review.js';
 import { addRole, addRoleToCurrentUser, uploadProfilePhoto, updateUserProfile } from '../controllers/userController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import upload from '../middleware/uploadMiddleware.js';
+const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+const uploadMiddleware = useCloudinary 
+  ? (await import('../middleware/cloudinaryUploadMiddleware.js')).default
+  : (await import('../middleware/uploadMiddleware.js')).default;
 
 const router = express.Router();
 
@@ -43,7 +46,7 @@ router.get('/helpers', async (req, res) => {
 router.post('/add-role', verifyToken, addRoleToCurrentUser);
 
 // POST /api/users/upload-profile-photo - Upload profile photo for current user (protected)
-router.post('/upload-profile-photo', verifyToken, upload.single('image'), uploadProfilePhoto);
+router.post('/upload-profile-photo', verifyToken, uploadMiddleware.single('image'), uploadProfilePhoto);
 
 // POST /api/users - Create a new user
 router.post('/', async (req, res) => {

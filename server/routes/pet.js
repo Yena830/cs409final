@@ -1,7 +1,10 @@
 import express from 'express';
 import { createPet, getMyPets, updatePet, deletePet, uploadPetPhoto } from '../controllers/petController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import upload from '../middleware/uploadMiddleware.js';
+const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+const uploadMiddleware = useCloudinary 
+  ? (await import('../middleware/cloudinaryUploadMiddleware.js')).default
+  : (await import('../middleware/uploadMiddleware.js')).default;
 
 const router = express.Router();
 
@@ -17,7 +20,7 @@ router.post('/upload-photo', (req, res, next) => {
   console.log('URL:', req.url);
   console.log('Headers:', req.headers);
   
-  upload.single('image')(req, res, (err) => {
+  uploadMiddleware.single('image')(req, res, (err) => {
     if (err) {
       console.error('Multer upload error:', err);
       return res.status(400).json({

@@ -1,6 +1,10 @@
 import Pet from '../models/pet.js';
 import User from '../models/user.js';
-import upload from '../middleware/uploadMiddleware.js';
+
+const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+const uploadMiddleware = useCloudinary 
+  ? (await import('../middleware/cloudinaryUploadMiddleware.js')).default
+  : (await import('../middleware/uploadMiddleware.js')).default;
 
 // Create a new pet
 export const createPet = async (req, res) => {
@@ -166,10 +170,17 @@ export const uploadPetPhoto = async (req, res) => {
       });
     }
 
-    // Construct the full URL based on the server
-    const protocol = req.protocol || 'http';
-    const host = req.get('host') || 'localhost:3001';
-    const photoUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    // 根据存储类型构造图片URL
+    let photoUrl;
+    if (useCloudinary && req.file.secure_url) {
+      // Cloudinary直接返回secure_url
+      photoUrl = req.file.secure_url;
+    } else {
+      // 本地存储需要构造URL
+      const protocol = req.protocol || 'http';
+      const host = req.get('host') || 'localhost:3001';
+      photoUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    }
 
     console.log('Upload pet photo - Success, URL:', photoUrl);
 
