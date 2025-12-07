@@ -136,10 +136,14 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
       if (response.success && response.data) {
         const allTasks = Array.isArray(response.data) ? response.data : [];
         
+        const userIdStr = userId.toString();
+        
         // Filter tasks assigned to this user (same logic as ProfilePage)
-        const assigned = allTasks.filter(task => 
-          task.assignedTo?._id === userId
-        );
+        // Use toString() to ensure consistent ID comparison
+        const assigned = allTasks.filter(task => {
+          const assignedToId = task.assignedTo?._id?.toString() || task.assignedTo?._id || task.assignedTo;
+          return assignedToId?.toString() === userIdStr;
+        });
         setAssignedTasks(assigned);
       }
     } catch (error) {
@@ -263,9 +267,12 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
   }
 
   // Calculate tasks done: only count tasks that are actually assigned to the user and completed
-  const completedTasks = assignedTasks.filter(t => 
-    t.assignedTo?._id === helperUser._id && t.status === 'completed'
-  ).length;
+  // Use toString() to ensure consistent ID comparison
+  const helperUserId = helperUser._id?.toString() || helperUser._id;
+  const completedTasks = assignedTasks.filter(t => {
+    const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+    return assignedToId?.toString() === helperUserId?.toString() && t.status === 'completed';
+  }).length;
   // Determine rating based on user's role
   const isHelper = helperUser.roles?.includes('helper');
   const rating = isHelper 

@@ -70,7 +70,7 @@ export const createTask = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     res.status(201).json({
       success: true,
@@ -123,7 +123,7 @@ export const getTaskById = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     if (!task) {
       return res.status(404).json({
@@ -215,7 +215,7 @@ export const applyToTask = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     res.json({
       success: true,
@@ -281,7 +281,7 @@ export const assignHelper = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     res.json({
       success: true,
@@ -335,7 +335,7 @@ export const completeTask = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto rating')
       .populate('assignedTo', 'name profilePhoto rating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     res.json({
       success: true,
@@ -389,7 +389,7 @@ export const confirmTask = async (req, res) => {
       .populate('pet', 'name type photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
-      .populate('applicants', 'name profilePhoto');
+      .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
 
     res.json({
       success: true,
@@ -520,14 +520,45 @@ export const submitReview = async (req, res) => {
       task: { $in: taskIdsForRole }
     });
     
+    console.log('Rating calculation debug:', {
+      revieweeId: revieweeId.toString(),
+      updateField,
+      taskIdsForRole: taskIdsForRole.map(id => id.toString()),
+      reviewsForRoleCount: reviewsForRole.length,
+      reviewsForRole: reviewsForRole.map(r => ({
+        id: r._id.toString(),
+        rating: r.rating,
+        task: r.task.toString(),
+        reviewee: r.reviewee.toString()
+      }))
+    });
+    
     // Always update rating, even if it's 0 (for new reviews)
     const averageRating = reviewsForRole.length > 0
       ? reviewsForRole.reduce((sum, r) => sum + r.rating, 0) / reviewsForRole.length
       : 0;
     
+    const roundedRating = Math.round(averageRating * 10) / 10;
+    
+    console.log('Calculated rating:', {
+      averageRating,
+      roundedRating,
+      updateField
+    });
+    
     // Update the appropriate rating field
     await User.findByIdAndUpdate(revieweeId, {
-      $set: { [updateField]: Math.round(averageRating * 10) / 10 }, // Round to 1 decimal place
+      $set: { [updateField]: roundedRating }, // Round to 1 decimal place
+    });
+    
+    // Verify the update
+    const updatedUser = await User.findById(revieweeId);
+    console.log('Updated user rating:', {
+      userId: revieweeId.toString(),
+      helperRating: updatedUser.helperRating,
+      ownerRating: updatedUser.ownerRating,
+      updateField,
+      newValue: updatedUser[updateField]
     });
 
     // Populate and return review
