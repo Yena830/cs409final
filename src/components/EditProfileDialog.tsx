@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -22,11 +22,17 @@ interface EditProfileDialogProps {
   onOpenChange: (open: boolean) => void;
   profileData: ProfileData;
   onSave: (data: ProfileData) => Promise<void>;
+  onPhotoUploaded?: (photoUrl: string) => void;
 }
 
-export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, profileData, onSave, onPhotoUploaded }: EditProfileDialogProps) {
   const [formData, setFormData] = useState<ProfileData>(profileData);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Update formData when profileData changes (e.g., when dialog reopens)
+  useEffect(() => {
+    setFormData(profileData);
+  }, [profileData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,20 +66,73 @@ export function EditProfileDialog({ open, onOpenChange, profileData, onSave }: E
     
     try {
       // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('image', file);
+      const uploadFormData = new FormData();
+      uploadFormData.append('image', file);
+      
+      console.log('Uploading profile photo:', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        formDataKeys: Array.from(uploadFormData.keys())
+      });
       
       // Upload image to server
-      // Note: We don't need to manually set Content-Type header for FormData
-      // The browser will automatically set it with the correct boundary
-      const response = await api.post<{ profilePhoto: string }>('/users/upload-profile-photo', formData);
+      const response = await api.post<{ profilePhoto: string }>('/users/upload-profile-photo', uploadFormData);
       
-      if (response.success && response.data?.profilePhoto) {
-        // Update form data with new photo URL
-        setFormData(prev => ({ ...prev, profilePhoto: response.data!.profilePhoto }));
-        toast.success("Photo uploaded successfully!");
+      console.log('Upload response:', response);
+      console.log('Upload response data:', response.data);
+      console.log('Upload response message:', response.message);
+      console.log('Upload response success:', response.success);
+      
+      if (response.success && response.data) {
+        // Backend returns { success: true, data: updatedUser }
+        // updatedUser is the full user object with profilePhoto field
+        const userData = response.data as any;
+        const photoUrl = userData.profilePhoto || userData.data?.profilePhoto;
+        
+        console.log('Response data structure:', {
+          responseData: response.data,
+          photoUrl: photoUrl,
+          hasProfilePhoto: !!userData.profilePhoto
+        });
+        
+        if (photoUrl) {
+          // Update form data with new photo URL
+          setFormData(prev => ({ ...prev, profilePhoto: photoUrl }));
+          
+          // Notify parent component to update user context immediately
+          console.log('Calling onPhotoUploaded with:', photoUrl);
+          if (onPhotoUploaded) {
+            onPhotoUploaded(photoUrl);
+          } else {
+            console.warn('onPhotoUploaded callback not provided');
+          }
+          
+          toast.success("Photo uploaded successfully!");
+        } else {
+          console.error('No profilePhoto in response:', response.data);
+          toast.error("Upload succeeded but no photo URL returned");
+        }
       } else {
-        toast.error(response.message || "Failed to upload photo");
+        console.error('Upload failed - Full response:', response);
+        console.error('Upload failed - Response data:', response.data);
+        console.error('Upload failed - Response message:', response.message);
+        
+        // Extract error message from response
+        let errorMsg = "Failed to upload photo";
+        if (response.message) {
+          errorMsg = response.message;
+        } else if (response.data) {
+          if (typeof response.data === 'string') {
+            errorMsg = response.data;
+          } else if (response.data.message) {
+            errorMsg = response.data.message;
+          } else if (response.data.error) {
+            errorMsg = response.data.error;
+          }
+        }
+        
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error("Upload error:", error);

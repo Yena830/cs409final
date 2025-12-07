@@ -63,6 +63,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
   const [applicantsDialogOpen, setApplicantsDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
+  const [reviewStatusLoading, setReviewStatusLoading] = useState(false);
   const [userReview, setUserReview] = useState<{
     rating: number;
     comment: string;
@@ -74,6 +75,8 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
     createdAt: string;
     reviewerName: string;
   } | null>(null);
+  const [allTasksForCalculation, setAllTasksForCalculation] = useState<any[]>([]);
+  const [formattedApplicants, setFormattedApplicants] = useState<any[]>([]);
   const { user, isHelper, isAuthenticated } = useUser();
 
   useEffect(() => {
@@ -88,9 +91,142 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
   // Check review status when task and user are loaded
   useEffect(() => {
     if (task && user && taskId) {
+      setReviewStatusLoading(true);
       checkReviewStatus();
     }
   }, [task, user, taskId]);
+
+  // Load all tasks to calculate completed tasks for applicants
+  useEffect(() => {
+    const loadAllTasks = async () => {
+      try {
+        const response = await api.get('/tasks');
+        if (response.success && response.data) {
+          setAllTasksForCalculation(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (error) {
+        console.error('Failed to load tasks for calculation:', error);
+      }
+    };
+    loadAllTasks();
+  }, []);
+
+  // Format applicants for ApplicantsDialog - fetch full user data for each applicant
+  // This ensures we have the latest helperRating and other info, matching HelperPublicProfilePage
+  useEffect(() => {
+    const formatApplicants = async () => {
+      if (!task?.applicants || task.applicants.length === 0) {
+        setFormattedApplicants([]);
+        return;
+      }
+      
+      // Fetch full user data for each applicant to get the latest helperRating
+      const applicantsWithFullData = await Promise.all(
+        task.applicants.map(async (app: any) => {
+          try {
+            // Fetch full user data to get the latest helperRating
+            const userResponse = await api.get(`/users/${app._id}`);
+            if (userResponse.success && userResponse.data) {
+              const fullUserData = userResponse.data;
+              
+              // Count completed tasks for this specific applicant helper
+              const applicantId = app._id?.toString() || app._id;
+              const completedTasks = allTasksForCalculation.filter((t: any) => {
+                const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+                return assignedToId === applicantId && t.status === 'completed';
+              }).length;
+              
+              // Use the same rating logic as HelperPublicProfilePage
+              // Use data from full user fetch, not from task.applicants populate
+              const rating = fullUserData.helperRating || fullUserData.rating || 0;
+              
+              // Get review count for this helper
+              let reviewCount = 0;
+              try {
+                const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+                if (reviewsResponse.success && reviewsResponse.data) {
+                  reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+                }
+              } catch (error) {
+                console.error(`Failed to fetch reviews for ${app.name}:`, error);
+              }
+              
+              console.log(`TaskDetailPage - Applicant ${app.name} (${applicantId}):`, {
+                fromTask: {
+                  helperRating: app.helperRating,
+                  rating: app.rating
+                },
+                fromUserAPI: {
+                  helperRating: fullUserData.helperRating,
+                  rating: fullUserData.rating
+                },
+                finalRating: rating,
+                reviewCount,
+                completedTasks
+              });
+              
+              return {
+                id: app._id,
+                name: fullUserData.name || app.name,
+                avatar: fullUserData.profilePhoto || app.profilePhoto || '',
+                rating: rating > 0 ? rating : 0,
+                reviewCount: reviewCount,
+                location: fullUserData.location || app.location || '',
+                tasksCompleted: completedTasks,
+                responseRate: 100, // Default
+                verified: false, // Default
+                experience: fullUserData.bio || app.bio || '', // Use bio as experience/introduction
+                certifications: fullUserData.specialties || app.specialties || [], // Use specialties as certifications
+                introduction: fullUserData.bio || app.bio || '',
+              };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user data for ${app._id}:`, error);
+          }
+          
+          // Fallback to task.applicants data if user fetch fails
+          const applicantId = app._id?.toString() || app._id;
+          const completedTasks = allTasksForCalculation.filter((t: any) => {
+            const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+            return assignedToId === applicantId && t.status === 'completed';
+          }).length;
+          
+          const rating = app.helperRating || app.rating || 0;
+          
+          // Get review count for this helper (fallback)
+          let reviewCount = 0;
+          try {
+            const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+            if (reviewsResponse.success && reviewsResponse.data) {
+              reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch reviews for ${app.name}:`, error);
+          }
+          
+          return {
+            id: app._id,
+            name: app.name,
+            avatar: app.profilePhoto || '',
+            rating: rating > 0 ? rating : 0,
+            reviewCount: reviewCount,
+            location: app.location || '',
+            tasksCompleted: completedTasks,
+            responseRate: 100,
+            verified: false,
+            experience: app.bio || '',
+            certifications: app.specialties || [],
+            introduction: app.bio || '',
+          };
+        })
+      );
+      
+      // Filter out any null/undefined results
+      setFormattedApplicants(applicantsWithFullData.filter(Boolean));
+    };
+    
+    formatApplicants();
+  }, [task?.applicants, allTasksForCalculation]);
 
   const checkReviewStatus = async () => {
     if (!taskId || !user || !task) return;
@@ -162,6 +298,8 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
       setHasSubmittedReview(false);
       setUserReview(null);
       setReceivedReview(null);
+    } finally {
+      setReviewStatusLoading(false);
     }
   };
 
@@ -367,21 +505,6 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
     return numRating.toFixed(1);
   };
 
-  // Format applicants for ApplicantsDialog
-  const formattedApplicants = task.applicants?.map(app => ({
-    id: app._id,
-    name: app.name,
-    avatar: app.profilePhoto || '',
-    rating: 4.8,
-    reviewCount: 0,
-    location: '',
-    tasksCompleted: 0,
-    responseRate: 100,
-    verified: false,
-    experience: '',
-    certifications: [],
-    introduction: '',
-  })) || [];
 
   return (
     <div className="min-h-screen pt-24 pb-24 px-4">
@@ -518,7 +641,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
             )}
           </div>
 
-          {/* Second Row: Pet Information + Helper Info / Task Status */}
+          {/* Second Row: Pet Information + Task Status */}
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Pet Information - Takes 2 columns */}
             {task.pet && (
@@ -544,11 +667,10 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
               </Card>
             )}
 
-            {/* Right column content - depends on task status */}
-            {(task.status === "open" || task.status === "pending") ? (
-              /* Task Status Card - Always show when status is open */
-              <Card className="p-4 border-0 shadow-md flex flex-col">
-                <div className="flex items-center justify-between mb-3">
+            {/* Right column content - unified Task Status card for all states */}
+            <div className="space-y-4">
+              <Card className="p-6 border-0 shadow-md h-full flex flex-col gap-4">
+                <div className="flex items-center justify-between">
                   <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
                   <Badge 
                     className={
@@ -556,246 +678,118 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                         ? 'bg-accent !text-white border-transparent'
                         : task.status === 'pending'
                         ? 'bg-chart-6 !text-white border-transparent'
-                        : 'bg-accent !text-white border-transparent'
+                        : task.status === 'in_progress'
+                        ? 'bg-chart-5 !text-white border-transparent'
+                        : task.status === 'pending_confirmation'
+                        ? 'bg-chart-7 !text-white border-transparent'
+                        : task.status === 'completed'
+                        ? 'bg-primary !text-white border-transparent'
+                        : 'bg-secondary !text-secondary-foreground border-transparent'
                     }
                   >
-                    {task.status === 'open' ? 'open' : task.status === 'pending' ? 'pending' : task.status?.replace(/_/g, ' ') || 'unknown'}
+                    {task.status === 'pending_confirmation' ? 'pending confirmation' : task.status?.replace(/_/g, ' ') || 'unknown'}
                   </Badge>
                 </div>
-                
-                {/* Owner: View Applications button */}
-                {isTaskOwner && task.applicants && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setApplicantsDialogOpen(true)}
-                    className="flex items-center gap-2 w-full mt-auto"
-                  >
-                    <Users className="w-4 h-4" />
-                    View Applications ({task.applicants.length})
-                  </Button>
-                )}
-                
-                {/* Non-owner: Apply button */}
-                {!isTaskOwner && isAuthenticated &&(
-                  <div className="mt-auto space-y-4">
-                    <div className="bg-secondary/20 p-4 rounded-xl">
-                      <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
-                      <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
-                      <div className="text-sm text-muted-foreground">per session</div>
-                    </div>
-                    <Button 
-                      size="lg" 
-                      className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                      onClick={handleApply}
-                      disabled={applying || hasApplied}
-                    >
-                      {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
-                    </Button>
-                    {hasApplied && (
-                      <p className="text-xs text-center text-primary">
-                        Your application has been submitted
-                      </p>
-                    )}
-                    {!hasApplied && (
-                      <p className="text-xs text-center text-muted-foreground">
-                        You'll be able to chat with the owner after applying
-                      </p>
-                    )}
-                  </div>
-                )}
-              </Card>
-            ) : (
-              /* Helper Info - Show when status is not open */
-              <>
-                {task.assignedTo && (
-                  <Card className="p-6 border-0 shadow-md h-full flex flex-col">
-                    <div className="flex items-center gap-2 mb-4">
-                      <PawPrint className="w-5 h-5 text-primary" />
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Assigned Helper</h3>
-                    </div>
-                    <div className="flex items-center gap-4 mb-4">
-                      <Avatar 
-                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
-                      >
-                        <AvatarImage src={task.assignedTo.profilePhoto} alt={task.assignedTo.name} />
-                        <AvatarFallback className="bg-primary text-white">
-                          {task.assignedTo.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 
-                            style={{ fontWeight: 600 }}
-                            className="cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => onNavigate('helper-public-profile', { helperId: task.assignedTo?._id })}
+
+                <div className="bg-secondary/20 p-4 rounded-2xl">
+                  <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
+                  <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
+                  <div className="text-sm text-muted-foreground">per session</div>
+                </div>
+
+                <div className="space-y-3 mt-auto">
+                  {/* Open / Pending */}
+                  {(task.status === "open" || task.status === "pending") && (
+                    <>
+                      {isTaskOwner && task.applicants && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setApplicantsDialogOpen(true)}
+                          className="flex items-center gap-2 w-full"
+                        >
+                          <Users className="w-4 h-4" />
+                          View Applications ({task.applicants.length})
+                        </Button>
+                      )}
+
+                      {!isTaskOwner && isAuthenticated && (
+                        <>
+                          <Button 
+                            size="lg" 
+                            className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 rounded-full"
+                            onClick={handleApply}
+                            disabled={applying || hasApplied}
                           >
-                            {task.assignedTo.name}
-                          </h4>
-                          <Shield className="w-4 h-4 text-primary" />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm" style={{ fontWeight: 600 }}>
-                            {formatRating(task.assignedTo?.helperRating)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                            {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
+                          </Button>
+                          {hasApplied && (
+                            <p className="text-xs text-center text-primary">
+                              Your application has been submitted
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
 
-                    <div className="flex gap-2 mt-auto">
-                      <Button 
-                        className="flex-1 bg-primary hover:bg-primary/90 text-white"
-                        onClick={() => onNavigate('messages', { selectedUserId: task.assignedTo?._id })}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Message
-                      </Button>
-                    </div>
-                  </Card>
-                )}
-
-                {/* Apply Card - Show for helpers when no helper assigned */}
-                {isHelper() && !isTaskOwner && !task.assignedTo && (
-                  <Card className="p-6 border-0 shadow-md bg-secondary/20 h-full flex flex-col">
-                    <h3 className="mb-4" style={{ fontWeight: 600 }}>Apply for this Task</h3>
-                    <div className="space-y-4 flex-1">
-                      <div className="bg-white p-4 rounded-xl">
-                        <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
-                        <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
-                        <div className="text-sm text-muted-foreground">per session</div>
-                      </div>
-                      <Button 
-                        size="lg" 
-                        className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                        onClick={handleApply}
-                        disabled={applying || hasApplied}
-                      >
-                        {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
-                      </Button>
-                      {hasApplied && (
-                        <p className="text-xs text-center text-primary">
-                          Your application has been submitted
+                  {/* In Progress */}
+                  {task.status === "in_progress" && (
+                    <>
+                      {isTaskHelper && (
+                        <Button 
+                          size="lg"
+                          className="w-full !bg-green-600 hover:!bg-green-700 !text-white shadow-lg rounded-full"
+                          onClick={handleCompleteTask}
+                          disabled={completing}
+                        >
+                          {completing ? 'Completing...' : 'Complete Task'}
+                        </Button>
+                      )}
+                      {isTaskOwner && (
+                        <p className="text-sm text-muted-foreground text-center">
+                          Task is currently in progress.
                         </p>
                       )}
-                      {!hasApplied && (
-                        <p className="text-xs text-center text-muted-foreground">
-                          You'll be able to chat with the owner after applying
+                    </>
+                  )}
+
+                  {/* Pending Confirmation */}
+                  {task.status === "pending_confirmation" && (
+                    <>
+                      {isTaskOwner && (
+                        <Button 
+                          size="lg"
+                          className="w-full !bg-green-600 hover:!bg-green-700 !text-white shadow-lg rounded-full"
+                          onClick={handleConfirmTask}
+                          disabled={completing}
+                        >
+                          {completing ? 'Confirming...' : 'Confirm Completion'}
+                        </Button>
+                      )}
+                      {isTaskHelper && (
+                        <p className="text-sm text-muted-foreground text-center">
+                          Awaiting owner confirmation.
                         </p>
                       )}
-                    </div>
-                  </Card>
-                )}
-              </>
-            )}
-          </div>
+                    </>
+                  )}
 
-          {/* Third Row: Task Status / Apply Card - Full Width (only when status is not open or pending) */}
-          {task.status !== "open" && task.status !== "pending" && (
-            <div>
-              {/* Task Status - Show for owner or helper when status is not open */}
-              {((isTaskOwner || isTaskHelper)) && (
-                <Card className="p-4 border-0 shadow-md">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
-                    <Badge 
-                      className={
-                        task.status === 'open'
-                          ? 'bg-green-500 !text-white border-transparent'
-                          : task.status === 'pending'
-                          ? 'bg-blue-500 !text-white border-transparent'
-                          : task.status === 'in_progress'
-                          ? 'bg-chart-5 !text-white border-transparent'
-                          : task.status === 'pending_confirmation'
-                          ? 'bg-chart-7 !text-white border-transparent'
-                          : task.status === 'completed'
-                          ? 'bg-primary !text-white border-transparent'
-                          : 'bg-secondary !text-secondary-foreground border-transparent'
-                      }
-                    >
-                      {task.status === 'pending_confirmation' ? 'pending confirmation' : task.status?.replace(/_/g, ' ') || 'unknown'}
-                    </Badge>
-                  </div>
-                  {/* Helper can complete task when in progress */}
-                  {task.status === "in_progress" && isTaskHelper && (
-                    <Button 
-                      size="lg"
-                      className="w-full !bg-green-600 hover:!bg-green-700 !text-white"
-                      onClick={handleCompleteTask}
-                      disabled={completing}
-                    >
-                      {completing ? 'Completing...' : 'Complete Task'}
-                    </Button>
-                  )}
-                  {/* Owner can confirm task when pending confirmation */}
-                  {task.status === "pending_confirmation" && isTaskOwner && (
-                    <Button 
-                      size="lg"
-                      className="w-full !bg-green-600 hover:!bg-green-700 !text-white"
-                      onClick={handleConfirmTask}
-                      disabled={completing}
-                    >
-                      {completing ? 'Confirming...' : 'Confirm Completion'}
-                    </Button>
-                  )}
+                  {/* Completed */}
                   {task.status === "completed" && (
-                    <div className="space-y-4">
-                      {/* Review received from the other party */}
-                      {receivedReview && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">
-                              Review from {receivedReview.reviewerName}:
-                            </span>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-4 h-4 ${
-                                    star <= receivedReview.rating
-                                      ? "text-yellow-500 fill-yellow-500"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          {receivedReview.comment && (
-                            <div className="bg-muted/50 p-3 rounded-lg">
-                              <p className="text-sm text-foreground">{receivedReview.comment}</p>
-                            </div>
-                          )}
+                    <div className="space-y-3">
+                      {/* Hide review details from status card; only show CTA when not submitted */}
+                      {reviewStatusLoading ? (
+                        <div className="text-sm text-muted-foreground text-center">
+                          Loading review status...
                         </div>
-                      )}
-                      
-                      {/* User's own review */}
-                      {hasSubmittedReview && userReview ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">Your Review:</span>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-4 h-4 ${
-                                    star <= userReview.rating
-                                      ? "text-yellow-500 fill-yellow-500"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          {userReview.comment && (
-                            <div className="bg-muted/50 p-3 rounded-lg">
-                              <p className="text-sm text-foreground">{userReview.comment}</p>
-                            </div>
-                          )}
+                      ) : hasSubmittedReview ? (
+                        <div className="text-sm text-muted-foreground text-center">
+                          Review submitted.
                         </div>
                       ) : (
                         <Button 
                           size="lg"
-                          className="w-full !bg-primary hover:!bg-primary/90 !text-white"
+                          className="w-full !bg-primary hover:!bg-primary/90 !text-white rounded-full"
                           onClick={() => setReviewDialogOpen(true)}
                         >
                           Click to Review
@@ -803,10 +797,12 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                       )}
                     </div>
                   )}
-                </Card>
-              )}
+                </div>
+              </Card>
+
             </div>
-          )}
+          </div>
+
         </div>
       </div>
 

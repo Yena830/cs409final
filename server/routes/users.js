@@ -46,7 +46,23 @@ router.get('/helpers', async (req, res) => {
 router.post('/add-role', verifyToken, addRoleToCurrentUser);
 
 // POST /api/users/upload-profile-photo - Upload profile photo for current user (protected)
-router.post('/upload-profile-photo', verifyToken, uploadMiddleware.single('image'), uploadProfilePhoto);
+router.post(
+  '/upload-profile-photo',
+  verifyToken,
+  (req, res, next) => {
+    uploadMiddleware.single('image')(req, res, (err) => {
+      if (err) {
+        console.error('Multer upload error:', err);
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'File upload error',
+        });
+      }
+      next();
+    });
+  },
+  uploadProfilePhoto
+);
 
 // POST /api/users - Create a new user
 router.post('/', async (req, res) => {

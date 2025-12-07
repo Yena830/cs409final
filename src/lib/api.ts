@@ -30,11 +30,15 @@ interface Message {
 }
 
 class ApiClient {
-  private getAuthHeaders(contentType: string = 'application/json'): HeadersInit {
+  private getAuthHeaders(contentType?: string): HeadersInit {
     const token = localStorage.getItem('token');
-    const headers: HeadersInit = {
-      'Content-Type': contentType,
-    };
+    const headers: HeadersInit = {};
+
+    // Only set Content-Type when explicitly provided (e.g., JSON).
+    // For FormData requests, let the browser set the multipart boundary.
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -91,10 +95,14 @@ class ApiClient {
       };
     }
     
+    // For error responses, extract message from data
+    const responseData = data.data || data;
+    const responseMessage = data.message || (response.ok ? undefined : `Server returned ${response.status} ${response.statusText}`);
+    
     return {
       success: response.ok,
-      data: data.data || data,
-      message: data.message,
+      data: responseData,
+      message: responseMessage,
     };
   }
 
@@ -114,12 +122,17 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+  async post<T = any>(path: string, body: any, options?: { headers?: HeadersInit }): Promise<ApiResponse<T>> {
     try {
+      // For FormData (file uploads), let the browser set Content-Type automatically
+      const isFormData = body instanceof FormData;
+      const defaultHeaders = isFormData ? this.getAuthHeadersWithoutContentType() : this.getAuthHeaders();
+      const headers = { ...defaultHeaders, ...options?.headers };
+      
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(body),
+        headers,
+        body: isFormData ? body : JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);
@@ -131,12 +144,25 @@ class ApiClient {
     }
   }
 
+  // Helper method to get auth headers without Content-Type (for FormData)
+  private getAuthHeadersWithoutContentType(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {};
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
   async put<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     try {
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(body),
+        headers: this.getAuthHeaders(isFormData ? undefined : 'application/json'),
+        body: isFormData ? body : JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);
@@ -165,11 +191,12 @@ class ApiClient {
   }
 
   async patch<T = any>(path: string, body: any): Promise<ApiResponse<T>> {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     try {
       const response = await fetch(`${BASE_URL}${path}`, {
         method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(body),
+        headers: this.getAuthHeaders(isFormData ? undefined : 'application/json'),
+        body: isFormData ? body : JSON.stringify(body),
       });
       
       return this.handleResponse<T>(response);

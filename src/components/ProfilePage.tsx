@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -120,12 +120,14 @@ interface BackendPet {
 export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initialActiveTab }: ProfilePageProps) {
   const { user, loading: userLoading, setUser } = useUser();
   const [loading, setLoading] = useState(true);
+  const [avatarKey, setAvatarKey] = useState(0);
   const [loadingPets, setLoadingPets] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>(initialActiveTab || 'tasks');
   const [addingRole, setAddingRole] = useState(false); // 新增状态用于跟踪角色添加过程
   const hasRefreshedUser = useRef(false);
+  const lastActiveTab = useRef<string | null>(null);
 
   // Update activeTab when initialActiveTab prop changes
   useEffect(() => {
@@ -137,6 +139,32 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
   // Clear reviews when userType changes to avoid showing wrong reviews
   useEffect(() => {
     setReviews([]);
+  }, [userType]);
+
+  // Function to refresh user data (can be called multiple times)
+  // Use useCallback to prevent infinite loops, but don't include user in dependencies
+  const refreshUserData = useCallback(async () => {
+    try {
+      const userResponse = await api.get(`/auth/me`);
+      if (userResponse.success && userResponse.data) {
+        console.log('User data from API:', userResponse.data);
+        console.log('helperRating:', userResponse.data.helperRating);
+        console.log('ownerRating:', userResponse.data.ownerRating);
+        console.log('specialties:', userResponse.data.specialties);
+        setUser(userResponse.data);
+        // Load specialties from user data into helperDetails
+        if (userType === 'helper' && userResponse.data.specialties) {
+          setHelperDetails(prev => ({
+            ...prev,
+            specialties: userResponse.data.specialties || []
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      // Continue even if refresh fails
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userType]);
 
   // Profile data from real user (computed for EditProfileDialog compatibility)
@@ -191,30 +219,13 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
 
     // Load initial data based on default tab (tasks)
     const initializeData = async () => {
-      // Refresh user data to get latest rating information (only once)
+      // Refresh user data to get latest rating information (only once on initial load)
       if (!hasRefreshedUser.current) {
-        try {
-          const userResponse = await api.get(`/auth/me`);
-          if (userResponse.success && userResponse.data) {
-            console.log('User data from API:', userResponse.data);
-            console.log('helperRating:', userResponse.data.helperRating);
-            console.log('ownerRating:', userResponse.data.ownerRating);
-            console.log('specialties:', userResponse.data.specialties);
-            setUser(userResponse.data);
-            // Load specialties from user data into helperDetails
-            if (userType === 'helper' && userResponse.data.specialties) {
-              setHelperDetails(prev => ({
-                ...prev,
-                specialties: userResponse.data.specialties || []
-              }));
-            }
-            hasRefreshedUser.current = true;
-          }
-        } catch (error) {
-          console.error('Failed to refresh user data:', error);
-          // Continue even if refresh fails
-        }
-      } else if (userType === 'helper' && user?.specialties) {
+        await refreshUserData();
+        hasRefreshedUser.current = true;
+      }
+      
+      if (userType === 'helper' && user?.specialties) {
         // If user data already loaded, sync specialties to helperDetails
         setHelperDetails(prev => ({
           ...prev,
@@ -258,17 +269,37 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
       }
     } else if (activeTab === 'tasks') {
       // Always refresh tasks when tasks tab is activated to show latest status
+      console.log('Tasks tab activated, loading tasks...', {
+        loadingTasks,
+        userType,
+        userId: user?._id
+      });
       if (!loadingTasks) {
         loadTasks();
+      } else {
+        console.log('Tasks already loading, skipping...');
       }
     } else if (activeTab === 'reviews') {
       // Always reload reviews when reviews tab is activated to ensure correct role filtering
       // Clear reviews first to avoid showing stale data
       setReviews([]);
       loadReviews();
+      // Refresh user data to get latest rating when switching to reviews tab
+      // Only refresh if this is a new tab activation (not a re-render)
+      if (lastActiveTab.current !== 'reviews') {
+        lastActiveTab.current = 'reviews';
+        // Use a small delay to avoid triggering the effect again immediately
+        const timer = setTimeout(() => {
+          refreshUserData();
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // Update lastActiveTab when switching away from reviews
+      lastActiveTab.current = activeTab;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, userLoading, user, loading, userType]);
+  }, [activeTab, userLoading, loading, userType]);
 
   // Refresh tasks when page regains focus (e.g., when returning from task detail page)
   useEffect(() => {
@@ -326,16 +357,34 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
       if (response.success && response.data) {
         const allTasks = Array.isArray(response.data) ? response.data : [];
         
+        const userId = user._id.toString();
+        
         // Filter tasks posted by this user (for owners)
-        const posted = allTasks.filter(task => 
-          task.postedBy?._id === user._id
-        );
+        const posted = allTasks.filter(task => {
+          const postedById = task.postedBy?._id?.toString() || task.postedBy?._id || task.postedBy;
+          return postedById === userId;
+        });
+        
+        console.log('ProfilePage - loadTasks:', {
+          userId,
+          allTasksCount: allTasks.length,
+          postedCount: posted.length,
+          userType,
+          postedTasks: posted.map(t => ({
+            id: t._id,
+            title: t.title,
+            postedBy: t.postedBy?._id?.toString() || t.postedBy?._id || t.postedBy
+          }))
+        });
+        
         setPostedTasks(posted);
         
         // Helpers should only see tasks where they've been selected (assigned)
-        const assigned = allTasks.filter(task => 
-          task.assignedTo?._id === user._id
-        );
+        const assigned = allTasks.filter(task => {
+          const assignedToId = task.assignedTo?._id?.toString() || task.assignedTo?._id || task.assignedTo;
+          return assignedToId === userId;
+        });
+        
         // Debug: Log task statuses for helpers
         if (userType === 'helper' && assigned.length > 0) {
           console.log('Helper tasks statuses:', assigned.map(t => ({
@@ -532,9 +581,192 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     }
   };
 
-  const handleViewApplicants = (task: Task) => {
+  const [applicantsData, setApplicantsData] = useState<any[]>([]);
+
+  const handleViewApplicants = async (task: Task) => {
     setSelectedTask(task);
     setApplicantsDialogOpen(true);
+    
+    // Reload task to get fresh applicant data with all fields
+    // Also load all tasks to calculate completed tasks for each applicant
+    // IMPORTANT: Fetch full user data for each applicant to ensure we have the latest helperRating
+    try {
+      const [taskResponse, tasksResponse] = await Promise.all([
+        api.get(`/tasks/${task._id}`),
+        api.get<Task[]>('/tasks')
+      ]);
+      
+      let allTasks: Task[] = [];
+      if (tasksResponse.success && tasksResponse.data) {
+        allTasks = Array.isArray(tasksResponse.data) ? tasksResponse.data : [];
+      }
+      
+      if (taskResponse.success && taskResponse.data) {
+        const updatedTask = taskResponse.data;
+        
+        console.log('Applicants data from task:', updatedTask.applicants);
+        
+        // Fetch full user data for each applicant to get the latest helperRating and other info
+        const applicantsWithFullData = await Promise.all(
+          (updatedTask.applicants || []).map(async (app: any) => {
+            try {
+              // Fetch full user data to get the latest helperRating
+              const userResponse = await api.get(`/users/${app._id}`);
+              if (userResponse.success && userResponse.data) {
+                const fullUserData = userResponse.data;
+                console.log(`Fetched full user data for ${app.name}:`, fullUserData);
+                
+                // Count completed tasks for this specific applicant helper
+                const applicantId = app._id?.toString() || app._id;
+                const completedTasks = allTasks.filter((t: Task) => {
+                  const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+                  return assignedToId === applicantId && t.status === 'completed';
+                }).length;
+                
+                // Use the same rating logic as HelperPublicProfilePage
+                // Use data from full user fetch, not from task.applicants populate
+                const rating = fullUserData.helperRating || fullUserData.rating || 0;
+                
+                // Get review count for this helper
+                let reviewCount = 0;
+                try {
+                  const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+                  if (reviewsResponse.success && reviewsResponse.data) {
+                    reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+                  }
+                } catch (error) {
+                  console.error(`Failed to fetch reviews for ${app.name}:`, error);
+                }
+                
+                console.log(`ProfilePage - Applicant ${app.name} (${applicantId}):`, {
+                  fromTask: {
+                    helperRating: app.helperRating,
+                    rating: app.rating
+                  },
+                  fromUserAPI: {
+                    helperRating: fullUserData.helperRating,
+                    rating: fullUserData.rating
+                  },
+                  finalRating: rating,
+                  reviewCount,
+                  location: fullUserData.location || app.location,
+                  bio: fullUserData.bio || app.bio,
+                  specialties: fullUserData.specialties || app.specialties,
+                  completedTasks
+                });
+                
+                return {
+                  id: app._id,
+                  name: fullUserData.name || app.name,
+                  avatar: fullUserData.profilePhoto || app.profilePhoto || '',
+                  rating: rating > 0 ? rating : 0,
+                  reviewCount: reviewCount,
+                  location: fullUserData.location || app.location || '',
+                  tasksCompleted: completedTasks,
+                  responseRate: 100, // Default
+                  verified: false, // Default
+                  experience: fullUserData.bio || app.bio || '', // Use bio as experience/introduction
+                  certifications: fullUserData.specialties || app.specialties || [], // Use specialties as certifications
+                  introduction: fullUserData.bio || app.bio || '',
+                };
+              }
+            } catch (error) {
+              console.error(`Failed to fetch user data for ${app._id}:`, error);
+            }
+            
+          // Fallback to task.applicants data if user fetch fails
+          const applicantId = app._id?.toString() || app._id;
+          const completedTasks = allTasks.filter((t: Task) => {
+            const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+            return assignedToId === applicantId && t.status === 'completed';
+          }).length;
+          
+          const rating = app.helperRating || app.rating || 0;
+          
+          // Get review count for this helper (fallback)
+          let reviewCount = 0;
+          try {
+            const reviewsResponse = await api.get(`/users/${app._id}/reviews?role=helper`);
+            if (reviewsResponse.success && reviewsResponse.data) {
+              reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch reviews for ${app.name}:`, error);
+          }
+          
+          return {
+            id: app._id,
+            name: app.name,
+            avatar: app.profilePhoto || '',
+            rating: rating > 0 ? rating : 0,
+            reviewCount: reviewCount,
+              location: app.location || '',
+              tasksCompleted: completedTasks,
+              responseRate: 100,
+              verified: false,
+              experience: app.bio || '',
+              certifications: app.specialties || [],
+              introduction: app.bio || '',
+            };
+          })
+        );
+        
+        // Filter out any null/undefined results
+        const formatted = applicantsWithFullData.filter(Boolean);
+        setApplicantsData(formatted);
+      } else {
+        // Fallback to basic data if reload fails
+        const basic = (task.applicants || []).map((app: any) => {
+          const applicantId = app._id?.toString() || app._id;
+          const completedTasks = allTasks.filter((t: Task) => {
+            const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+            return assignedToId === applicantId && t.status === 'completed';
+          }).length;
+          
+          // Use the same rating logic as HelperPublicProfilePage
+          const rating = app.helperRating || app.rating || 0;
+          
+          return {
+            id: app._id,
+            name: app.name,
+            avatar: app.profilePhoto || '',
+            rating: rating > 0 ? rating : 0,
+            reviewCount: 0,
+            location: app.location || '',
+            tasksCompleted: completedTasks,
+            responseRate: 100,
+            verified: false,
+            experience: app.bio || '',
+            certifications: app.specialties || [],
+            introduction: app.bio || '',
+          };
+        });
+        setApplicantsData(basic);
+      }
+    } catch (error) {
+      console.error('Failed to load applicants:', error);
+      // Fallback to basic data
+      const basic = (task.applicants || []).map((app: any) => {
+        // Use the same rating logic as HelperPublicProfilePage
+        const rating = app.helperRating || app.rating || 0;
+        
+        return {
+          id: app._id,
+          name: app.name,
+          avatar: app.profilePhoto || '',
+          rating: rating > 0 ? rating : 0,
+          reviewCount: 0,
+          location: app.location || '',
+          tasksCompleted: 0, // Can't calculate without allTasks
+          responseRate: 100,
+          verified: false,
+          experience: app.bio || '',
+          certifications: app.specialties || [],
+          introduction: app.bio || '',
+        };
+      });
+      setApplicantsData(basic);
+    }
   };
 
   const handleViewApplicantProfile = (applicantId: string | number) => {
@@ -562,25 +794,6 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     }
   };
 
-  // Get applicants for the selected task
-  const getApplicantsForTask = () => {
-    if (!selectedTask || !selectedTask.applicants) return [];
-    
-    return selectedTask.applicants.map((app: { _id: string; name: string; profilePhoto?: string }) => ({
-      id: app._id,
-      name: app.name,
-      avatar: app.profilePhoto || '',
-      rating: 4.8, // Default rating (not in backend yet)
-      reviewCount: 0,
-      location: '',
-      tasksCompleted: 0,
-      responseRate: 100,
-      verified: false,
-      experience: '',
-      certifications: [],
-      introduction: '',
-    }));
-  };
 
   if (userLoading || loading) {
     return (
@@ -618,8 +831,17 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         {/* Profile Header */}
         <Card className="p-8 mb-6 border-0 shadow-lg">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <Avatar className="w-32 h-32">
-              <AvatarImage src={user?.profilePhoto || ""} alt={user?.name || ""} />
+            <Avatar className="w-32 h-32" key={`avatar-${avatarKey}-${user?.profilePhoto}`}>
+              <AvatarImage 
+                src={user?.profilePhoto ? `${user.profilePhoto}?t=${avatarKey}` : ""} 
+                alt={user?.name || ""}
+                onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                  console.error('Avatar image failed to load:', user?.profilePhoto, e);
+                }}
+                onLoad={() => {
+                  console.log('Avatar image loaded successfully:', user?.profilePhoto);
+                }}
+              />
               <AvatarFallback className="bg-primary text-white text-3xl">
                 {user?.name?.substring(0, 2).toUpperCase() || "U"}
               </AvatarFallback>
@@ -761,7 +983,13 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                               });
                             }
                             // Show rating if it exists and is greater than 0, otherwise show —
-                            return rating && rating > 0 ? rating.toFixed(1) : '—';
+                            // Also check if rating is a valid number (not NaN, not null, not undefined)
+                            // Allow 0 rating to be shown as 0.0 (though unlikely)
+                            if (rating == null || isNaN(rating)) {
+                              return '—';
+                            }
+                            // Show rating even if it's 0 (though this is unlikely for a completed task with review)
+                            return rating.toFixed(1);
                           })()}
                         </div>
                         <div className="text-xs text-muted-foreground">Rating</div>
@@ -973,8 +1201,14 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
             ) : (
               <div className="space-y-4">
                 {myTasks.map((task) => {
+                  if (!task || !task._id) {
+                    console.error('Invalid task in myTasks:', task);
+                    return null;
+                  }
+                  
                   const petImage = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
                   const applicantsCount = task.applicants?.length || 0;
+                  const taskStatus = task.status?.trim() || '';
                   
                   return (
                     <Card key={task._id} className="p-6 border-0 shadow-md hover:shadow-xl transition-shadow">
@@ -982,7 +1216,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                         <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
                           <ImageWithFallback
                             src={petImage}
-                            alt={task.title}
+                            alt={task.title || 'Task'}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -990,30 +1224,30 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <h3 style={{ fontWeight: 600 }}>{task.title}</h3>
-                                {task.status && (
+                                <h3 style={{ fontWeight: 600 }}>{task.title || 'Untitled Task'}</h3>
+                                {taskStatus && (
                                   <Badge
                                     className={
-                                      task.status.trim() === 'open'
+                                      taskStatus === 'open'
                                         ? 'bg-accent !text-white border-transparent'
-                                        : task.status.trim() === 'pending'
+                                        : taskStatus === 'pending'
                                         ? 'bg-chart-6 !text-white border-transparent'
-                                        : task.status.trim() === 'in_progress'
+                                        : taskStatus === 'in_progress'
                                         ? 'bg-chart-5 !text-white border-transparent'
-                                        : task.status.trim() === 'pending_confirmation'
+                                        : taskStatus === 'pending_confirmation'
                                         ? 'bg-chart-7 !text-white border-transparent'
-                                        : task.status.trim() === 'completed'
+                                        : taskStatus === 'completed'
                                         ? 'bg-primary !text-white border-transparent'
                                         : 'bg-secondary !text-secondary-foreground border-transparent'
                                     }
                                   >
-                                    {task.status.trim() === 'open'
+                                    {taskStatus === 'open'
                                       ? 'open'
-                                      : task.status.trim() === 'pending'
+                                      : taskStatus === 'pending'
                                       ? 'pending'
-                                      : task.status.trim() === 'pending_confirmation'
+                                      : taskStatus === 'pending_confirmation'
                                       ? 'pending confirmation'
-                                      : task.status.replace(/_/g, ' ')}
+                                      : taskStatus.replace(/_/g, ' ')}
                                   </Badge>
                                 )}
                               </div>
@@ -1152,6 +1386,30 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         onOpenChange={setEditProfileOpen}
         profileData={getProfileData()}
         onSave={handleSaveProfile}
+        onPhotoUploaded={(photoUrl) => {
+          // Update user context immediately when photo is uploaded
+          console.log('onPhotoUploaded called with:', photoUrl);
+          console.log('Current user before update:', user);
+          
+          // Use a small delay to ensure state updates are processed
+          setTimeout(() => {
+            if (user) {
+              const updatedUser = {
+                ...user,
+                profilePhoto: photoUrl
+              };
+              console.log('Updating user context with:', updatedUser);
+              setUser(updatedUser);
+              
+              // Force avatar refresh by updating key
+              setAvatarKey(prev => {
+                const newKey = prev + 1;
+                console.log('Updating avatarKey from', prev, 'to', newKey);
+                return newKey;
+              });
+            }
+          }, 100);
+        }}
       />
 
       <PetFormDialog
@@ -1174,7 +1432,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
       <ApplicantsDialog
         open={applicantsDialogOpen}
         onOpenChange={setApplicantsDialogOpen}
-        applicants={getApplicantsForTask()}
+        applicants={applicantsData}
         selectedTask={selectedTask ? {
           title: selectedTask.title,
           applications: selectedTask.applicants?.length || 0
