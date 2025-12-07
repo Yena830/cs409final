@@ -1,10 +1,11 @@
 import express from 'express';
 import Message from '../models/message.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
+import { getIO } from '../server.js'; // Import socket.io instance
 
 const router = express.Router();
 
-// 获取用户之间的消息历史
+
 router.get('/conversation/:userId', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -83,7 +84,7 @@ router.get('/conversations', verifyToken, async (req, res) => {
           participantId,
           lastMessage: latestMessage.content,
           timestamp: latestMessage.timestamp,
-          unread: unreadCount
+          hasUnread: unreadCount > 0
         });
       }
     }
@@ -141,6 +142,31 @@ router.post('/', verifyToken, async (req, res) => {
     
     res.status(201).json({ success: true, data: message });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 标记与特定用户的对话为已读
+router.put('/conversation/:userId/read', verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user.id;
+    
+    // 将来自特定用户发送给当前用户的所有未读消息标记为已读
+    const result = await Message.updateMany(
+      {
+        sender: userId,
+        recipient: currentUserId,
+        read: false
+      },
+      {
+        read: true
+      }
+    );
+    
+    res.json({ success: true, message: `Marked ${result.modifiedCount} messages as read` });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

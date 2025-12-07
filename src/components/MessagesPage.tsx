@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { Send, Search, Smile, Paperclip, ArrowLeft, Check, CheckCheck, MoreVertical, Phone, Video, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Send, Search, Smile, Paperclip, ArrowLeft, MoreVertical, Phone, Video, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -48,7 +48,7 @@ interface Conversation {
   initials: string;
   lastMessage: string;
   time: string;
-  unread: number;
+  hasUnread: boolean;
   online: boolean;
   messages: Message[];
   participantId: string;
@@ -104,19 +104,41 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
             console.error("Failed to get user details:", error);
           }
           
-          userConversations.push({
-            _id: conv.participantId,
-            name: userName,
-            avatar: userAvatar,
-            initials: userInitials,
-            lastMessage: conv.lastMessage,
-            time: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            unread: conv.unread,
-            online: false,
-            messages: [],
-            participantId: conv.participantId,
-            timestamp: conv.timestamp
-          });
+          // Check if we already have a conversation with this participant
+          const existingIndex = userConversations.findIndex(c => c.participantId === conv.participantId);
+          if (existingIndex >= 0) {
+            // Update existing conversation if this one is newer
+            if (new Date(conv.timestamp).getTime() > new Date(userConversations[existingIndex].timestamp).getTime()) {
+              userConversations[existingIndex] = {
+                _id: conv.participantId,
+                name: userName,
+                avatar: userAvatar,
+                initials: userInitials,
+                lastMessage: conv.lastMessage,
+                time: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                hasUnread: conv.hasUnread,
+                online: false,
+                messages: [],
+                participantId: conv.participantId,
+                timestamp: conv.timestamp
+              };
+            }
+          } else {
+            // Add new conversation
+            userConversations.push({
+              _id: conv.participantId,
+              name: userName,
+              avatar: userAvatar,
+              initials: userInitials,
+              lastMessage: conv.lastMessage,
+              time: new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              hasUnread: conv.hasUnread,
+              online: false,
+              messages: [],
+              participantId: conv.participantId,
+              timestamp: conv.timestamp
+            });
+          }
         }
       }
       
@@ -125,40 +147,46 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         // Check if conversation with this user already exists
         const existingConversation = userConversations.find(conv => conv.participantId === selectedUserId);
         if (!existingConversation) {
-          // Get user info from API
-          let userName = "Selected Helper";
-          let userAvatar = "";
-          let userInitials = "SH";
-          
-          try {
-
-            const response = await api.getUserDetails(selectedUserId);
-            if (response.success && response.data) {
-              userName = response.data.name;
-              userAvatar = response.data.profilePhoto || "";
-
-              userInitials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+          // Also check if we already have a conversation with this _id
+          const existingById = userConversations.find(conv => conv._id === selectedUserId);
+          if (!existingById) {
+            // Get user info from API
+            let userName = "Selected Helper";
+            let userAvatar = "";
+            let userInitials = "SH";
+            
+            try {
+              const response = await api.getUserDetails(selectedUserId);
+              if (response.success && response.data) {
+                userName = response.data.name;
+                userAvatar = response.data.profilePhoto || "";
+                userInitials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              }
+            } catch (error) {
+              console.error("Failed to get user details:", error);
             }
-          } catch (error) {
-            console.error("Failed to get user details:", error);
+            
+            // Check one more time if conversation already exists after API call
+            const finalCheck = userConversations.find(conv => conv.participantId === selectedUserId);
+            if (!finalCheck) {
+              const newConversation: Conversation = {
+                _id: "selected",
+                name: userName,
+                avatar: userAvatar,
+                initials: userInitials,
+                lastMessage: "",
+                time: "Just now",
+                hasUnread: false,
+                online: true,
+                messages: [],
+                participantId: selectedUserId,
+                timestamp: new Date().toISOString()
+              };
+              
+              // Add new conversation to the beginning of the list
+              userConversations = [newConversation, ...userConversations];
+            }
           }
-          
-          const newConversation: Conversation = {
-            _id: "selected",
-            name: userName,
-            avatar: userAvatar,
-            initials: userInitials,
-            lastMessage: "",
-            time: "Just now",
-            unread: 0,
-            online: true,
-            messages: [],
-            participantId: selectedUserId,
-            timestamp: new Date().toISOString()
-          };
-          
-          // Add new conversation to the beginning of the list
-          userConversations = [newConversation, ...userConversations];
         }
       }
       
@@ -211,17 +239,31 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         
         // Use functional update to avoid closure issue
         setConversations(prev => {
+          // First remove any duplicates by participantId
+          const uniquePrev = prev.reduce((acc, current) => {
+            const existing = acc.find(item => item.participantId === current.participantId);
+            if (!existing) {
+              return acc.concat([current]);
+            } else {
+              // If duplicate found, keep the one with newer timestamp
+              if (new Date(current.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
+                return acc.map(item => item.participantId === current.participantId ? current : item);
+              }
+              return acc;
+            }
+          }, [] as Conversation[]);
+          
           // Check if conversation with this user already exists
-          const existingIndex = prev.findIndex(conv => conv.participantId === message.sender._id);
+          const existingIndex = uniquePrev.findIndex(conv => conv.participantId === message.sender._id);
           
           if (existingIndex >= 0) {
             // Update existing conversation 
-            const updatedConversations = [...prev];
+            const updatedConversations = [...uniquePrev];
             updatedConversations[existingIndex] = {
               ...updatedConversations[existingIndex],
               lastMessage: message.content,
               time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              unread: updatedConversations[existingIndex].unread + 1,
+              hasUnread: true,
               timestamp: message.timestamp
             };
             return updatedConversations;
@@ -234,12 +276,12 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
               initials: message.sender.name ? message.sender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : "UU",
               lastMessage: message.content,
               time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              unread: 1,
+              hasUnread: true,
               online: false,
               messages: [],
               participantId: message.sender._id,
               timestamp: message.timestamp
-            }, ...prev];
+            }, ...uniquePrev];
           }
         });
         
@@ -254,6 +296,11 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
             }
             return prev;
           });
+          
+          // Since we're viewing this conversation, mark messages as read locally
+          setConversations(prev => prev.map(conv => 
+            conv.participantId === message.sender._id ? { ...conv, hasUnread: false } : conv
+          ));
         }
       });
       
@@ -270,7 +317,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
   useEffect(() => {
     let isMounted = true;
     
-    loadConversations().then((loadedConversations) => {
+    loadConversations().then(async (loadedConversations) => {
       if (!isMounted) return;
       
       // If there is selectedUserId, automatically select the corresponding conversation
@@ -280,8 +327,14 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         if (conversation) {
           setSelectedChat(conversation._id);
         } else {
-          // If not found, may be because of newly added conversation, use "selected" as ID
-          setSelectedChat("selected");
+          // Also check by _id in case it's the "selected" conversation
+          const conversationById = loadedConversations.find(conv => conv._id === selectedUserId || conv.participantId === selectedUserId);
+          if (conversationById) {
+            setSelectedChat(conversationById._id);
+          } else {
+            // If not found, may be because of newly added conversation, use "selected" as ID
+            setSelectedChat("selected");
+          }
         }
       } else if (loadedConversations.length > 0) {
         // If no selectedUserId but have conversation list, select the first conversation
@@ -294,6 +347,36 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     };
   }, [user, selectedUserId]);
 
+  // Mark conversation as read when selectedChat changes
+  useEffect(() => {
+    if (!selectedChat || !user) return;
+    
+    const markAsRead = async () => {
+      // Use a small delay to ensure conversations state is updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Get the current conversations state directly from state
+      const currentConversations = [...conversations];
+      const conversation = currentConversations.find(c => c._id === selectedChat);
+      
+      if (conversation) {
+        // Mark as read locally
+        setConversations(prev => prev.map(conv => 
+          conv._id === selectedChat ? { ...conv, hasUnread: false } : conv
+        ));
+        
+        // Notify server to mark messages as read
+        try {
+          await api.markConversationAsRead(conversation.participantId);
+        } catch (error) {
+          console.error("Failed to mark conversation as read on server:", error);
+        }
+      }
+    };
+    
+    markAsRead();
+  }, [selectedChat, user?._id]);
+
   // Load messages for the selected conversation
   useEffect(() => {
     if (!selectedChat || !user) {
@@ -304,11 +387,16 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     let isMounted = true;
     
     const loadMessages = async () => {
+      // Use a small delay to ensure conversations state is updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Get the current conversations state directly from state
+      const currentConversations = [...conversations];
+      const conversation = currentConversations.find(c => c._id === selectedChat);
+      
+      if (!conversation || !isMounted) return;
+      
       try {
-        // Get conversation details
-        const conversation = conversations.find(c => c._id === selectedChat);
-        if (!conversation || !isMounted) return;
-        
         // Fetch real message history from API
         const response = await api.getConversation(conversation.participantId);
         if (response.success && response.data && isMounted) {
@@ -319,10 +407,17 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
               messages: response.data
             });
             
-            // Mark as read
+            // Mark as read locally
             setConversations(prev => prev.map(conv => 
-              conv._id === selectedChat ? { ...conv, unread: 0 } : conv
+              conv._id === selectedChat ? { ...conv, hasUnread: false } : conv
             ));
+            
+            // Notify server to mark messages as read
+            try {
+              await api.markConversationAsRead(conversation.participantId);
+            } catch (error) {
+              console.error("Failed to mark conversation as read on server:", error);
+            }
           }
         }
       } catch (error) {
@@ -353,7 +448,10 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         // Send message to backend via API
         const response = await api.sendMessage(selectedConversation.participantId, message);
         if (response.success && response.data) {
-          const newMessage: Message = response.data;
+          const newMessage: Message = {
+            ...response.data,
+            read: false  // Newly sent messages are not read by recipient yet
+          };
           
           // Update local UI
           setSelectedConversation(prev => {
@@ -362,7 +460,8 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                 ...prev,
                 messages: [...prev.messages, newMessage],
                 lastMessage: newMessage.content,
-                time: "Just Now"
+                time: new Date(newMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: newMessage.timestamp
               };
             }
             return prev;
@@ -386,12 +485,30 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     }
   };
 
-  const filteredConversations = conversations.filter((conv) =>
-    conv.name.toLowerCase().includes(searchQuery.toLowerCase()) && conv.participantId !== user?._id
-  ).sort((a, b) => {
-    // Sort by timestamp in descending order (newest first)
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+  const filteredConversations = (() => {
+    // Remove duplicates by participantId
+    const uniqueConversations = conversations.reduce((acc, current) => {
+      const existing = acc.find(item => item.participantId === current.participantId);
+      if (!existing) {
+        return acc.concat([current]);
+      } else {
+        // If duplicate found, keep the one with newer timestamp
+        if (new Date(current.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
+          return acc.map(item => item.participantId === current.participantId ? current : item);
+        }
+        return acc;
+      }
+    }, [] as Conversation[]);
+    
+    return uniqueConversations
+      .filter((conv) =>
+        conv.name.toLowerCase().includes(searchQuery.toLowerCase()) && conv.participantId !== user?._id
+      )
+      .sort((a, b) => {
+        // Sort by timestamp in descending order (newest first)
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+  })();
 
   const handleDeleteConversation = async (participantId: string) => {
     if (!user) return;
@@ -474,12 +591,9 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                 ) : (
                   filteredConversations.map((conv) => (
                     <div
-                      key={`${conv._id}-${conv.participantId}`}
+                      key={conv.participantId}
                       onClick={() => {
-                        // Use setTimeout to ensure state update order is correct
-                        setTimeout(() => {
-                          setSelectedChat(conv._id);
-                        }, 0);
+                        setSelectedChat(conv._id);
                       }}
                       className={`p-4 border-b border-border/50 cursor-pointer transition-all duration-200 ${
                         selectedChat === conv._id 
@@ -535,10 +649,8 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                             <p className="text-sm text-muted-foreground truncate">
                               {conv.lastMessage}
                             </p>
-                            {conv.unread > 0 && (
-                              <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                {conv.unread}
-                              </span>
+                            {conv.hasUnread && (
+                              <span className="bg-primary text-white text-xs rounded-full w-2 h-2 flex items-center justify-center flex-shrink-0" />
                             )}
                           </div>
                         </div>
@@ -663,15 +775,6 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                                 <p className="text-xs">
                                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
-                                {msg.sender._id === user?._id && (
-                                  <span>
-                                    {msg.read ? (
-                                      <CheckCheck className="w-3.5 h-3.5 text-white" />
-                                    ) : (
-                                      <Check className="w-3.5 h-3.5 text-white/60" />
-                                    )}
-                                  </span>
-                                )}
                               </div>
                             </div>
                           </div>
