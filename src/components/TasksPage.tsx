@@ -207,9 +207,6 @@ export function TasksPage({ onNavigate }: TasksPageProps) {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="icon" className="shrink-0">
-              <Filter className="w-5 h-5" />
-            </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">

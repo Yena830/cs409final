@@ -185,23 +185,23 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     <div className="min-h-screen pt-24 pb-24 px-4">
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onNavigate("landing")}
-            className="hover:bg-primary/10 hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
+        <div className="mb-6 flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onNavigate("landing")}
+              className="hover:bg-primary/10 hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '40px' }}>
               Find Helpers
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Connect with trusted pet care professionals in your area
-            </p>
           </div>
+          <p className="text-muted-foreground">
+            Connect with trusted pet care professionals in your area
+          </p>
         </div>
 
         {/* Search and Filters */}
