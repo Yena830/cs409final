@@ -24,7 +24,6 @@ const allowedOrigins = [
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 创建 HTTP 服务器
 const server = http.createServer(app);
 
 // 初始化 Socket.IO，配置 CORS
@@ -34,6 +33,15 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   }
+});
+
+// 添加更多日志
+io.engine.on("connection_error", (err) => {
+  console.log("Socket.IO connection error:", err);
+});
+
+console.log("Socket.IO server initialized with CORS settings:", {
+  origins: allowedOrigins
 });
 
 // 导出 io 实例，供其他模块使用
@@ -62,17 +70,23 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// WebSocket 连接处理
+
 io.on('connection', (socket) => {
-  // 用户加入房间
+  console.log('User connected to WebSocket:', socket.id);
+  console.log('Socket handshake details:', socket.handshake);
+  
+
   socket.on('join_room', (userId) => {
+    console.log('User joined room:', userId);
+    console.log('Available rooms before join:', socket.adapter.rooms);
     socket.join(userId);
+    console.log('Available rooms after join:', socket.adapter.rooms);
   });
   
-  // 处理发送消息
   socket.on('send_message', async (data) => {
     try {
-      // 保存消息到数据库
+      console.log('Received message via WebSocket:', data);      
+    
       const Message = (await import('./models/message.js')).default;
       const message = new Message(data);
       await message.save();
@@ -81,14 +95,23 @@ io.on('connection', (socket) => {
       await message.populate('sender', 'name profilePhoto');
       await message.populate('recipient', 'name profilePhoto');
       
-      // 广播消息给接收者
-      socket.to(data.recipient).emit('receive_message', message);
+      console.log('Message saved to database:', message._id);
+      console.log('Populated message:', message);
       
-      // 发送确认给发送者
-      socket.emit('message_sent', message);
+      console.log('Sending message to recipient room:', data.recipient);
+      console.log('Available rooms:', io.sockets.adapter.rooms);
+      console.log('Checking if recipient room exists:', io.sockets.adapter.rooms.has(data.recipient));
+      io.to(data.recipient).emit('receive_message', message);
+      
+      console.log('Sending confirmation to sender:', data.sender);
+      io.to(data.sender).emit('message_sent', message);
     } catch (error) {
       console.error('Message sending error:', error);
     }
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('User disconnected from WebSocket:', socket.id, 'Reason:', reason);
   });
 });
 
@@ -98,6 +121,7 @@ const startServer = async () => {
     await connectDB();
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`WebSocket server ready on ws://localhost:${PORT}`);
     }).on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`❌ Port ${PORT} is already in use.`);
@@ -108,6 +132,12 @@ const startServer = async () => {
       }
       process.exit(1);
     });
+    
+    // Log server status periodically
+    setInterval(() => {
+      console.log(`Server status: Listening on port ${PORT}`);
+      console.log(`Active connections: ${io.engine.clientsCount}`);
+    }, 30000); // Every 30 seconds
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     process.exit(1);

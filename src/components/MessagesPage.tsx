@@ -204,88 +204,117 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
   useEffect(() => {
     if (user) {
       // Connect to WebSocket server
-      socketRef.current = io("http://localhost:3001", {
+      let serverUrl;
+      const viteApiUrl = (import.meta as any).env.VITE_API_URL;
+      if (viteApiUrl) {
+        // Use VITE_API_URL if available (for production)
+        // Convert HTTP/HTTPS URL to WS/WSS URL
+        if (viteApiUrl.startsWith('https://')) {
+          serverUrl = viteApiUrl.replace(/^https/, 'wss').replace('/api', '');
+        } else if (viteApiUrl.startsWith('http://')) {
+          serverUrl = viteApiUrl.replace(/^http/, 'ws').replace('/api', '');
+        } else {
+          serverUrl = viteApiUrl.replace('/api', '');
+        }
+      } else {
+        // Fallback to localhost for development
+        serverUrl = 'ws://localhost:3001';
+      }
+      
+      console.log("Connecting to WebSocket server:", serverUrl);
+      
+      socketRef.current = io(serverUrl, {
         transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
       });
       
-      
-      // Join room
-      socketRef.current.emit("join_room", user._id);
-      
-      // Listen for connection success event  
+      // Log connection events
       socketRef.current.on("connect", () => {
-        // Removed connection success log
+        console.log("WebSocket connected with ID:", socketRef.current?.id);
+        // Join room after connection is established
+        setTimeout(() => {
+          if (user._id && socketRef.current?.connected) {
+            socketRef.current?.emit("join_room", user._id);
+            console.log("Joined room with user ID:", user._id);
+          }
+        }, 100);
       });
       
-      // Listen for connection error event
       socketRef.current.on("connect_error", (error) => {
-        // Removed connection error log
+        console.error("WebSocket connection error:", error);
+        console.error("Connection error details:", {
+          serverUrl,
+          transports: ["websocket", "polling"],
+          reconnection: true
+        });
       });
       
-      // Listen for disconnect event
       socketRef.current.on("disconnect", (reason) => {
-        // Removed disconnect log
+        console.log("WebSocket disconnected:", reason);
       });
       
       // Listen for receive message
       socketRef.current.on("receive_message", (message: Message) => {
+        console.log("Received message via WebSocket:", message);
         // Ensure message is not from user self
         if (message.sender._id === user._id) {
+          console.log("Ignoring message from self");
           return;
         }
         
-        // Use functional update to avoid closure issue
+        // Update conversation list with new message
         setConversations(prev => {
-          // First remove any duplicates by participantId
-          const uniquePrev = prev.reduce((acc, current) => {
-            const existing = acc.find(item => item.participantId === current.participantId);
-            if (!existing) {
-              return acc.concat([current]);
-            } else {
-              // If duplicate found, keep the one with newer timestamp
-              if (new Date(current.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
-                return acc.map(item => item.participantId === current.participantId ? current : item);
-              }
-              return acc;
-            }
-          }, [] as Conversation[]);
+          // Create a copy of the previous conversations
+          const updatedConversations = [...prev];
           
-          // Check if conversation with this user already exists
-          const existingIndex = uniquePrev.findIndex(conv => conv.participantId === message.sender._id);
+          // Find existing conversation with this sender
+          const existingConvIndex = updatedConversations.findIndex(
+            conv => conv.participantId === message.sender._id
+          );
           
-          if (existingIndex >= 0) {
-            // Update existing conversation 
-            const updatedConversations = [...uniquePrev];
-            updatedConversations[existingIndex] = {
-              ...updatedConversations[existingIndex],
+          if (existingConvIndex !== -1) {
+            // Update existing conversation
+            updatedConversations[existingConvIndex] = {
+              ...updatedConversations[existingConvIndex],
               lastMessage: message.content,
-              time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              hasUnread: true,
-              timestamp: message.timestamp
+              time: new Date(message.timestamp).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              timestamp: message.timestamp,
+              hasUnread: selectedConversation?.participantId !== message.sender._id
             };
-            return updatedConversations;
           } else {
-            // Create new conversation (if it doesn't exist)
-            return [{
+            // Create new conversation if it doesn't exist
+            updatedConversations.unshift({
               _id: message.sender._id,
               name: message.sender.name || "Unknown User",
               avatar: message.sender.profilePhoto || "",
-              initials: message.sender.name ? message.sender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : "UU",
+              initials: message.sender.name 
+                ? message.sender.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                : "UU",
               lastMessage: message.content,
-              time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: new Date(message.timestamp).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
               hasUnread: true,
               online: false,
               messages: [],
               participantId: message.sender._id,
               timestamp: message.timestamp
-            }, ...uniquePrev];
+            });
           }
+          
+          // Sort conversations by timestamp (newest first)
+          return updatedConversations.sort((a, b) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
         });
         
-        // If currently viewing this conversation, add to message list 
+        // If currently viewing this conversation, add message to chat
         if (selectedConversation && selectedConversation.participantId === message.sender._id) {
           setSelectedConversation(prev => {
             if (prev) {
@@ -297,11 +326,70 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
             return prev;
           });
           
-          // Since we're viewing this conversation, mark messages as read locally
+          // Mark as read since we're viewing the conversation
           setConversations(prev => prev.map(conv => 
-            conv.participantId === message.sender._id ? { ...conv, hasUnread: false } : conv
+            conv.participantId === message.sender._id 
+              ? { ...conv, hasUnread: false } 
+              : conv
           ));
         }
+        
+        // Scroll to bottom of messages
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 100);
+      });
+      
+      // Listen for message sent confirmation
+      socketRef.current.on("message_sent", (message: Message) => {
+        console.log("Message sent confirmation received:", message);
+        
+        // Update the conversation in the list
+        setConversations(prev => {
+          const updatedConversations = [...prev];
+          const convIndex = updatedConversations.findIndex(
+            conv => conv.participantId === message.recipient._id
+          );
+          
+          if (convIndex !== -1) {
+            updatedConversations[convIndex] = {
+              ...updatedConversations[convIndex],
+              lastMessage: message.content,
+              time: new Date(message.timestamp).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              timestamp: message.timestamp
+            };
+          }
+          
+          // Sort conversations by timestamp (newest first)
+          return updatedConversations.sort((a, b) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+        });
+        
+        // If currently viewing this conversation, add message to chat
+        if (selectedConversation && selectedConversation.participantId === message.recipient._id) {
+          setSelectedConversation(prev => {
+            if (prev) {
+              return {
+                ...prev,
+                messages: [...prev.messages, message]
+              };
+            }
+            return prev;
+          });
+        }
+        
+        // Scroll to bottom of messages
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 100);
       });
       
       // Cleanup function
@@ -311,7 +399,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         }
       };
     }
-  }, [user?._id]);
+  }, [user?._id, selectedConversation]);
 
   // Load user conversation list
   useEffect(() => {
@@ -445,15 +533,37 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
   const handleSendMessage = async () => {
     if (message.trim() && user && selectedConversation) {
       try {
-        // Send message to backend via API
-        const response = await api.sendMessage(selectedConversation.participantId, message);
-        if (response.success && response.data) {
+        // Prepare message data
+        const messageData = {
+          sender: user._id,
+          recipient: selectedConversation.participantId,
+          content: message.trim(),
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+        
+        // Send message through WebSocket for real-time delivery
+        if (socketRef.current && socketRef.current.connected) {
+          // Emit message through WebSocket
+          socketRef.current.emit('send_message', messageData);
+          
+          // Update local UI immediately for better UX
           const newMessage: Message = {
-            ...response.data,
-            read: false  // Newly sent messages are not read by recipient yet
+            _id: `temp_${Date.now()}`,
+            ...messageData,
+            sender: {
+              _id: user._id,
+              name: user.name || "You",
+              profilePhoto: user.profilePhoto || ""
+            },
+            recipient: {
+              _id: selectedConversation.participantId,
+              name: selectedConversation.name,
+              profilePhoto: selectedConversation.avatar || ""
+            }
           };
           
-          // Update local UI
+          // Update conversation messages
           setSelectedConversation(prev => {
             if (prev) {
               return {
@@ -469,7 +579,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           
           // Update conversation list
           setConversations(prev => prev.map(conv => 
-            conv._id === selectedConversation._id ? { 
+            conv.participantId === selectedConversation.participantId ? { 
               ...conv, 
               lastMessage: newMessage.content,
               time: new Date(newMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -477,7 +587,44 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
             } : conv
           ));
           
+          // Clear input field
           setMessage("");
+        } else {
+          // Fallback to API if WebSocket is not connected
+          console.warn("WebSocket not connected, falling back to API");
+          const response = await api.sendMessage(selectedConversation.participantId, message);
+          if (response.success && response.data) {
+            const newMessage: Message = {
+              ...response.data,
+              read: false
+            };
+            
+            // Update local UI
+            setSelectedConversation(prev => {
+              if (prev) {
+                return {
+                  ...prev,
+                  messages: [...prev.messages, newMessage],
+                  lastMessage: newMessage.content,
+                  time: new Date(newMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  timestamp: newMessage.timestamp
+                };
+              }
+              return prev;
+            });
+            
+            // Update conversation list
+            setConversations(prev => prev.map(conv => 
+              conv._id === selectedConversation._id ? { 
+                ...conv, 
+                lastMessage: newMessage.content,
+                time: new Date(newMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: newMessage.timestamp
+              } : conv
+            ));
+            
+            setMessage("");
+          }
         }
       } catch (error) {
         console.error("Failed to send message:", error);

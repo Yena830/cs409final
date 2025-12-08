@@ -31,32 +31,27 @@ router.get('/conversation/:userId', verifyToken, async (req, res) => {
   }
 });
 
-// 获取用户的所有对话列表
 router.get('/conversations', verifyToken, async (req, res) => {
   try {
     const currentUserId = req.user.id;
     
-    // 获取与当前用户相关的所有唯一对话伙伴（排除自己和已删除的对话）
+
     const sentMessages = await Message.find({ 
       sender: currentUserId,
-      recipient: { $ne: currentUserId }, // 排除发送给自己
-      deletedBy: { $ne: currentUserId } // 排除已删除的对话
+      recipient: { $ne: currentUserId },
+      deletedBy: { $ne: currentUserId } 
     }).distinct('recipient');
       
     const receivedMessages = await Message.find({ 
       recipient: currentUserId,
-      sender: { $ne: currentUserId }, // 排除发送给自己
-      deletedBy: { $ne: currentUserId } // 排除已删除的对话
+      deletedBy: { $ne: currentUserId }
     }).distinct('sender');
     
-    // 合并发送和接收的用户ID
     const participantIds = [...new Set([...sentMessages, ...receivedMessages])];
     
-    // 构建对话列表
     const conversations = [];
     
     for (const participantId of participantIds) {
-      // 获取与该参与者最新的消息
       const latestMessage = await Message.findOne({
         $and: [
           {
@@ -72,7 +67,6 @@ router.get('/conversations', verifyToken, async (req, res) => {
         .populate('recipient', 'name profilePhoto');
       
       if (latestMessage) {
-        // 获取未读消息数量
         const unreadCount = await Message.countDocuments({
           sender: participantId,
           recipient: currentUserId,
@@ -96,13 +90,12 @@ router.get('/conversations', verifyToken, async (req, res) => {
   }
 });
 
-// 删除用户与特定用户的对话记录（逻辑删除）
+
 router.delete('/conversation/:userId', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const currentUserId = req.user.id;
     
-    // 将对话标记为对当前用户已删除，而不是物理删除
     const result = await Message.updateMany(
       {
         $or: [
@@ -117,12 +110,11 @@ router.delete('/conversation/:userId', verifyToken, async (req, res) => {
     
     res.json({ success: true, message: `Marked ${result.modifiedCount} messages as deleted for user ${currentUserId}` });
   } catch (error) {
-    console.error('删除对话记录错误:', error);
+    console.error('Error deleting conversation records:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// 发送新消息
 router.post('/', verifyToken, async (req, res) => {
   try {
     const { recipient, content } = req.body;
@@ -140,19 +132,23 @@ router.post('/', verifyToken, async (req, res) => {
     await message.populate('sender', 'name profilePhoto');
     await message.populate('recipient', 'name profilePhoto');
     
+    const io = getIO();
+    
+    io.to(recipient.toString()).emit('receive_message', message);
+    
+    io.to(sender.toString()).emit('message_sent', message);
+    
     res.status(201).json({ success: true, data: message });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// 标记与特定用户的对话为已读
 router.put('/conversation/:userId/read', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const currentUserId = req.user.id;
     
-    // 将来自特定用户发送给当前用户的所有未读消息标记为已读
     const result = await Message.updateMany(
       {
         sender: userId,
