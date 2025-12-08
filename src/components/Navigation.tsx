@@ -37,7 +37,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             <PawPrint className="w-5 h-5 text-white fill-white" />
           </div>
           <span 
-            className="text-primary tracking-tight" 
+            className="tracking-tight" 
             style={{ 
               fontWeight: 800, 
               fontSize: '22px',
@@ -46,7 +46,8 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               letterSpacing: '-0.5px'
             }}
           >
-            PawfectMatch
+            <span className="text-[#38473B]">Pawfect</span>
+            <span className="text-primary">Match</span>
           </span>
         </div>
 
