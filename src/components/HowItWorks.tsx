@@ -29,11 +29,13 @@ export function HowItWorks() {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
-          backgroundImage: "url(/src/assets/bg2.jpeg)",
-          backgroundAttachment: "fixed",
+          backgroundImage: "url(https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
         }}
       />
-      <div className="absolute inset-0 bg-white/50"></div>
+      {/* <div className="absolute inset-0 bg-white bg-opacity-40"></div> */}
       
       {/* Content */}
       <div className="max-w-[1200px] mx-auto relative z-10 w-full">
