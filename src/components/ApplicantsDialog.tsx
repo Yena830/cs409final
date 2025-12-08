@@ -107,7 +107,6 @@ export function ApplicantsDialog({
                             <div className="flex items-center gap-1">
                               <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                               <span style={{ fontWeight: 600 }}>{applicant.rating}</span>
-                              <span>({applicant.reviewCount})</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
@@ -120,16 +119,24 @@ export function ApplicantsDialog({
                       {/* Stats */}
                       <div className="grid grid-cols-3 gap-3 mb-4">
                         <div className="bg-primary/5 rounded-lg px-3 py-2">
-                          <div className="text-primary" style={{ fontWeight: 700 }}>{applicant.tasksCompleted}</div>
+                          <div className="text-primary" style={{ fontWeight: 700 }}>
+                            {applicant.tasksCompleted ?? 'N/A'}
+                          </div>
                           <div className="text-xs text-muted-foreground">Tasks Done</div>
                         </div>
                         <div className="bg-accent/5 rounded-lg px-3 py-2">
-                          <div className="text-accent" style={{ fontWeight: 700 }}>{applicant.responseRate}%</div>
-                          <div className="text-xs text-muted-foreground">Response</div>
+                          <div className="text-accent" style={{ fontWeight: 700 }}>
+                            {typeof applicant.reviewCount === 'number'
+                              ? applicant.reviewCount
+                              : 'N/A'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Reviews</div>
                         </div>
                         <div className="bg-chart-5/5 rounded-lg px-3 py-2">
-                          <div className="text-chart-5" style={{ fontWeight: 700 }}>{applicant.experience}</div>
-                          <div className="text-xs text-muted-foreground">Experience</div>
+                          <div className="text-chart-5" style={{ fontWeight: 700 }}>
+                            {applicant.experience || '—'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Expected Hourly Rate</div>
                         </div>
                       </div>
 

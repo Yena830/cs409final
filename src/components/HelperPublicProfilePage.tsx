@@ -30,7 +30,6 @@ interface HelperUser extends UserType {
   completedTasks?: number;
   verified?: boolean;
   location?: string;
-  expectedHourlyRate?: number;
 }
 
 interface Review {
@@ -376,19 +375,6 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
                 </Card>
                 <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-chart-5/10 rounded-full flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-chart-5" />
-                    </div>
-                    <div>
-                      <div className="text-chart-5" style={{ fontWeight: 700, fontSize: '24px' }}>
-                        ${helperUser.expectedHourlyRate ? helperUser.expectedHourlyRate.toFixed(0) : '—'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Expected hourly rate</div>
-                    </div>
-                  </div>
-                </Card>
-                <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                  <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center">
                       <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                     </div>
@@ -406,41 +392,39 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
         </Card>
 
         {/* Professional Details Section (Read-only) */}
-        {(helperUser.experience || helperUser.specialties) && (
-          <Card className="p-6 mb-6 border-0 shadow-lg">
-            <h2 className="mb-4" style={{ fontWeight: 600, fontSize: '20px' }}>Professional Details</h2>
+        <Card className="p-6 mb-6 border-0 shadow-lg">
+          <h2 className="mb-4" style={{ fontWeight: 600, fontSize: '20px' }}>Professional Details</h2>
 
-            {/* Experience */}
-            {helperUser.experience && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Briefcase className="w-5 h-5 text-primary" />
-                  <h3 style={{ fontWeight: 600 }}>Experience</h3>
-                </div>
-                <p className="text-muted-foreground ml-7">
-                  {helperUser.experience}
-                </p>
-              </div>
-            )}
+          {/* Experience */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              <h3 style={{ fontWeight: 600 }}>Experience</h3>
+            </div>
+            <p className="text-muted-foreground ml-7">
+              {helperUser.experience && helperUser.experience.trim().length > 0
+                ? helperUser.experience
+                : "No experience added yet"}
+            </p>
+          </div>
 
-            {/* Service Specialties */}
-            {helperUser.specialties && helperUser.specialties.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-5 h-5 text-primary" />
-                  <h3 style={{ fontWeight: 600 }}>Service Specialties</h3>
-                </div>
-                <div className="flex flex-wrap gap-2 ml-7">
-                  {helperUser.specialties.map((specialty, index) => (
-                    <Badge key={index} className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5">
-                      {specialty}
-                    </Badge>
-                  ))}
-                </div>
+          {/* Service Specialties */}
+          {helperUser.specialties && helperUser.specialties.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-5 h-5 text-primary" />
+                <h3 style={{ fontWeight: 600 }}>Service Specialties</h3>
               </div>
-            )}
-          </Card>
-        )}
+              <div className="flex flex-wrap gap-2 ml-7">
+                {helperUser.specialties.map((specialty, index) => (
+                  <Badge key={index} className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5">
+                    {specialty}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* Reviews Section */}
         <Card className="p-6 border-0 shadow-lg">
@@ -512,4 +496,3 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId }: Helper
     </div>
   );
 }
-

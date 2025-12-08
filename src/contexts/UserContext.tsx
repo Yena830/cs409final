@@ -13,7 +13,6 @@ export interface User {
   bio?: string;
   profilePhoto?: string;
   location?: string;
-  expectedHourlyRate?: number;
   specialties?: string[];
   createdAt?: string;
   ownerRating?: number;

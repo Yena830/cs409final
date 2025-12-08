@@ -92,10 +92,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
             fullUser: user
           });
 
-          // Format expected hourly rate - just the number
-          const hourlyRate = user.expectedHourlyRate && user.expectedHourlyRate > 0 
-            ? user.expectedHourlyRate.toFixed(0) 
-            : '—';
+          const hourlyRate = '—';
 
           // Calculate completed tasks: only count tasks that are actually assigned to this helper and completed
           const completedTasks = tasks.filter(task => {
@@ -120,7 +117,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
             reviewCount: 0, // Default - can be fetched from reviews in future
             location: user.location || "", // Use actual location from user model
             services, // Use specialties from user model, same as helper profile
-            hourlyRate, // Use actual expectedHourlyRate from user model
+            hourlyRate,
             availability: "Flexible", // Default - could be added to user model
             verified: false, // Default - could be based on account verification
             completedTasks, // Calculate from actual tasks

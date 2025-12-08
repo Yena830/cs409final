@@ -78,7 +78,6 @@ interface ProfileData {
   username: string;
   bio: string;
   location: string;
-  expectedHourlyRate: number;
   profilePhoto: string;
 }
 
@@ -172,7 +171,6 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     username: user?.name || "",
     bio: user?.bio || "",
     location: user?.location || "",
-    expectedHourlyRate: user?.expectedHourlyRate || 0,
     profilePhoto: user?.profilePhoto || "",
   });
 
@@ -465,7 +463,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
       name: data.username,
       bio: data.bio,
       location: data.location,
-      expectedHourlyRate: data.expectedHourlyRate,
+      // expectedHourlyRate removed
       profilePhoto: data.profilePhoto
     };
     
@@ -479,7 +477,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         name: response.data.name,
         bio: response.data.bio,
         location: response.data.location,
-        expectedHourlyRate: response.data.expectedHourlyRate,
+        // expectedHourlyRate removed
         profilePhoto: response.data.profilePhoto
       });
       
@@ -918,7 +916,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
 
               {userType === 'helper' ? (
                 // Helper Stats
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -949,19 +947,6 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           })()}%
                         </div>
                         <div className="text-xs text-muted-foreground">Completion</div>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-chart-5/10 rounded-full flex items-center justify-center">
-                        <TrendingUp className="w-6 h-6 text-chart-5" />
-                      </div>
-                      <div>
-                        <div className="text-chart-5" style={{ fontWeight: 700, fontSize: '24px' }}>
-                          ${user?.expectedHourlyRate ? user.expectedHourlyRate.toFixed(0) : '—'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">Expected hourly rate</div>
                       </div>
                     </div>
                   </Card>
@@ -999,7 +984,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                 </div>
               ) : (
                 // Owner Stats
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -1021,19 +1006,6 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           {postedTasks.filter(t => t.status === 'open' || t.status === 'pending' || t.status === 'in_progress' || t.status === 'pending_confirmation').length}
                         </div>
                         <div className="text-xs text-muted-foreground">Active Tasks</div>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="p-4 border-0 bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-chart-5/10 rounded-full flex items-center justify-center">
-                        <TrendingUp className="w-6 h-6 text-chart-5" />
-                      </div>
-                      <div>
-                        <div className="text-chart-5" style={{ fontWeight: 700, fontSize: '24px' }}>
-                          ${user?.expectedHourlyRate ? user.expectedHourlyRate.toFixed(0) : '—'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">Expected hourly rate</div>
                       </div>
                     </div>
                   </Card>

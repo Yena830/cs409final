@@ -173,10 +173,12 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                 reviewCount: reviewCount,
                 location: fullUserData.location || app.location || '',
                 tasksCompleted: completedTasks,
-                responseRate: 100, // Default
+                responseRate: reviewCount, // repurpose for reviews count display
                 verified: false, // Default
-                experience: fullUserData.bio || app.bio || '', // Use bio as experience/introduction
-                certifications: fullUserData.specialties || app.specialties || [], // Use specialties as certifications
+                experience: fullUserData.specialties?.length
+                  ? fullUserData.specialties.join(', ')
+                  : (fullUserData.bio || app.bio || ''),
+                certifications: fullUserData.specialties || app.specialties || [],
                 introduction: fullUserData.bio || app.bio || '',
               };
             }
@@ -212,9 +214,11 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
             reviewCount: reviewCount,
             location: app.location || '',
             tasksCompleted: completedTasks,
-            responseRate: 100,
+            responseRate: reviewCount,
             verified: false,
-            experience: app.bio || '',
+                experience: app.specialties?.length
+                  ? app.specialties.join(', ')
+                  : (app.bio || ''),
             certifications: app.specialties || [],
             introduction: app.bio || '',
           };
@@ -625,6 +629,28 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
                         {formatRating(task.postedBy?.ownerRating)}
                       </span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Owner stats to fill space */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-primary/5 rounded-lg px-3 py-2">
+                    <div className="text-primary" style={{ fontWeight: 700 }}>
+                      {allTasksForCalculation.filter(
+                        (t: any) => (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString()
+                      ).length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Tasks Posted</div>
+                  </div>
+                  <div className="bg-accent/5 rounded-lg px-3 py-2">
+                    <div className="text-accent" style={{ fontWeight: 700 }}>
+                      {allTasksForCalculation.filter(
+                        (t: any) =>
+                          (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString() &&
+                          t.status === 'completed'
+                      ).length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Tasks Completed</div>
                   </div>
                 </div>
 
