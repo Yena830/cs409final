@@ -842,6 +842,7 @@ export function TaskDetailPage({ onNavigate, taskId, returnTo, activeTab }: Task
           selectedTask={{ title: task.title, applications: task.applicants?.length || 0 }}
           onViewProfile={(applicantId) => onNavigate('helper-public-profile', { userId: applicantId })}
           onConfirmHelper={(applicantId) => handleAssignHelper(applicantId.toString())}
+          onMessage={(applicantId) => onNavigate('messages', { selectedUserId: applicantId })}
         />
       )}
 

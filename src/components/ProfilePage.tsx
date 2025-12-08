@@ -1411,6 +1411,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         } : null}
         onViewProfile={handleViewApplicantProfile}
         onConfirmHelper={handleConfirmHelper}
+        onMessage={(applicantId) => onNavigate('messages', { selectedUserId: applicantId })}
       />
     </div>
   );

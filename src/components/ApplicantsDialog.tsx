@@ -31,6 +31,7 @@ interface ApplicantsDialogProps {
   selectedTask: { title: string; applications: number } | null;
   onViewProfile?: (applicantId: number | string) => void;
   onConfirmHelper?: (applicantId: number | string) => void;
+  onMessage?: (applicantId: number | string) => void;
 }
 
 export function ApplicantsDialog({ 
@@ -39,7 +40,8 @@ export function ApplicantsDialog({
   applicants,
   selectedTask,
   onViewProfile,
-  onConfirmHelper 
+  onConfirmHelper,
+  onMessage
 }: ApplicantsDialogProps) {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -117,7 +119,7 @@ export function ApplicantsDialog({
                       </div>
 
                       {/* Stats */}
-                      <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-primary/5 rounded-lg px-3 py-2">
                           <div className="text-primary" style={{ fontWeight: 700 }}>
                             {applicant.tasksCompleted ?? 'N/A'}
@@ -131,12 +133,6 @@ export function ApplicantsDialog({
                               : 'N/A'}
                           </div>
                           <div className="text-xs text-muted-foreground">Reviews</div>
-                        </div>
-                        <div className="bg-chart-5/5 rounded-lg px-3 py-2">
-                          <div className="text-chart-5" style={{ fontWeight: 700 }}>
-                            {applicant.experience || '—'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">Expected Hourly Rate</div>
                         </div>
                       </div>
 
@@ -175,7 +171,7 @@ export function ApplicantsDialog({
                         <Button 
                           variant="outline" 
                           className="hover:bg-primary/10 hover:border-primary hover:text-primary"
-                          onClick={() => {/* Message functionality */}}
+                          onClick={() => onMessage?.(applicant.id)}
                         >
                           <MessageCircle className="w-4 h-4" />
                         </Button>

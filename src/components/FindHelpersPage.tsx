@@ -78,8 +78,8 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
 
       if (helpersResponse.success && helpersResponse.data) {
         const helperUsers = Array.isArray(helpersResponse.data) ? helpersResponse.data : [];
-        // Map backend User data to UI Helper format
-        const mappedHelpers: Helper[] = helperUsers.map((user) => {
+        // Map backend User data to UI Helper format (with real review counts)
+        const mappedHelpers: Helper[] = await Promise.all(helperUsers.map(async (user) => {
           // Use profilePhoto or empty string (Avatar will show fallback with initials)
           const image = user.profilePhoto || '';
 
@@ -92,7 +92,16 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
             fullUser: user
           });
 
-          const hourlyRate = '—';
+          // Fetch reviews count for helper to match profile display
+          let reviewCount = 0;
+          try {
+            const reviewsResponse = await api.get(`/users/${user._id}/reviews?role=helper`);
+            if (reviewsResponse.success && reviewsResponse.data) {
+              reviewCount = Array.isArray(reviewsResponse.data) ? reviewsResponse.data.length : 0;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch reviews for helper ${user.name}:`, error);
+          }
 
           // Calculate completed tasks: only count tasks that are actually assigned to this helper and completed
           const completedTasks = tasks.filter(task => {
@@ -114,17 +123,17 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
             name: user.name || 'Unknown Helper',
             image,
             rating: (user.helperRating !== undefined && user.helperRating !== null && user.helperRating > 0) ? user.helperRating : 0, // Use actual helperRating from backend
-            reviewCount: 0, // Default - can be fetched from reviews in future
+            reviewCount,
             location: user.location || "", // Use actual location from user model
             services, // Use specialties from user model, same as helper profile
-            hourlyRate,
+            hourlyRate: '—',
             availability: "Flexible", // Default - could be added to user model
             verified: false, // Default - could be based on account verification
             completedTasks, // Calculate from actual tasks
             bio: (user.bio && user.bio.trim()) || "No bio added yet.",
             specialties: user.specialties || [], // Store specialties for consistency
           };
-        });
+        }));
         setHelpers(mappedHelpers);
       } else {
         toast.error(helpersResponse.message || "Failed to load helpers");
@@ -256,10 +265,10 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
             {filteredHelpers.map((helper) => (
               <Card
                 key={helper._id}
-                className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 cursor-pointer group"
+                className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 cursor-pointer group flex flex-col"
                 onClick={() => handleViewProfile(helper._id)}
               >
-                <div className="p-6">
+                <div className="p-6 flex flex-col h-full space-y-4">
                   {/* Header with Avatar and Basic Info */}
                   <div className="flex items-start gap-4 mb-4">
                     <Avatar className="w-20 h-20 border-4 border-primary/20 shadow-md group-hover:border-primary/40 transition-colors">
@@ -317,23 +326,21 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                         </Button>
                       </div>
 
-                      {helper.location && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <MapPin className="w-4 h-4" />
-                          <span>{helper.location}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 min-h-[20px]">
+                        <MapPin className={`w-4 h-4 ${helper.location ? '' : 'opacity-0'}`} />
+                        <span>{helper.location || ' '}</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Bio */}
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
                     {helper.bio}
                   </p>
 
                   {/* Services Tags */}
-                  {helper.services.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
+                  {helper.services.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
                       {helper.services.map((service, idx) => (
                         <Badge
                           key={idx}
@@ -344,16 +351,18 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                         </Badge>
                       ))}
                     </div>
+                  ) : (
+                    <div className="h-8" />
                   )}
 
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-secondary/20 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/20 rounded-lg">
                     <div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <DollarSign className="w-4 h-4" />
-                        <span>Expected Hourly Rate</span>
+                        <Star className="w-4 h-4" />
+                        <span>Reviews</span>
                       </div>
-                      <p style={{ fontWeight: 600 }}>{helper.hourlyRate}</p>
+                      <p style={{ fontWeight: 600 }}>{helper.reviewCount ?? '—'}</p>
                     </div>
 
                     <div>
@@ -367,7 +376,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
 
                   {/* Availability */}
                   {helper.availability && (
-                    <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-4 h-4 text-primary" />
                         <span className="text-sm text-primary" style={{ fontWeight: 600 }}>
@@ -377,6 +386,9 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
                       <p className="text-sm text-muted-foreground">{helper.availability}</p>
                     </div>
                   )}
+
+                  {/* Spacer to push buttons to the bottom for consistent alignment */}
+                  <div className="flex-1" />
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">

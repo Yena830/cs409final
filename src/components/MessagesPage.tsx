@@ -548,7 +548,14 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onNavigate("landing")}
+            onClick={() => {
+              // Prefer to go back if possible, otherwise default to tasks
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                onNavigate("tasks");
+              }
+            }}
             className="hover:bg-primary/10 hover:text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
