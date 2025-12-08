@@ -33,7 +33,7 @@ export function HowItWorks() {
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
-          opacity: 0.85,
+          opacity: 0.75,
         }}
       />
       
