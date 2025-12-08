@@ -17,7 +17,8 @@ dotenv.config({ path: path.resolve('./server/.env') });
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",               
-  "https://cs409final-alpha.vercel.app",   
+  "https://cs409final-alpha.vercel.app",
+  "https://pawfectmatch-cs409.vercel.app"  
 ];
 
 const app = express();

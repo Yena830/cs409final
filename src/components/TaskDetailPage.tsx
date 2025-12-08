@@ -57,7 +57,7 @@ interface Task {
   }>;
 }
 
-// 默认宠物头像映射
+
 const DEFAULT_PET_IMAGES: Record<string, string> = {
   dog: "https://placehold.co/600x400/FFB84D/FFFFFF?text=Dog",
   cat: "https://placehold.co/600x400/FFB6C1/FFFFFF?text=Cat",
@@ -66,7 +66,6 @@ const DEFAULT_PET_IMAGES: Record<string, string> = {
   other: "https://placehold.co/600x400/98FB98/FFFFFF?text=Pet",
 };
 
-// 获取宠物默认图片的函数
 const getDefaultPetImage = (petType?: string) => {
   if (!petType) return DEFAULT_PET_IMAGES.other;
   return DEFAULT_PET_IMAGES[petType.toLowerCase()] || DEFAULT_PET_IMAGES.other;

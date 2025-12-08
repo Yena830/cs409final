@@ -10,7 +10,6 @@ import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
 
-// 默认宠物头像映射
 const DEFAULT_PET_IMAGES: Record<string, string> = {
   dog: "https://placehold.co/600x600/FFB84D/FFFFFF?text=Dog",
   cat: "https://placehold.co/600x600/FFB6C1/FFFFFF?text=Cat",

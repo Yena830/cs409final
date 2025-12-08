@@ -21,7 +21,6 @@ import { useUser } from "../hooks/useUser";
 import { Users } from "lucide-react";
 import { User as UserIcon } from "lucide-react";
 
-// 默认宠物头像映射
 const DEFAULT_PET_IMAGES: Record<string, string> = {
   dog: "https://placehold.co/600x600/FFB84D/FFFFFF?text=Dog",
   cat: "https://placehold.co/600x600/FFB6C1/FFFFFF?text=Cat",
