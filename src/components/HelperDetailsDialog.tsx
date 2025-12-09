@@ -8,6 +8,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Badge } from "./ui/badge";
 import { X, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { SERVICE_SPECIALTIES } from "../lib/constants";
 
 interface HelperDetails {
   experience: string;
@@ -21,17 +22,6 @@ interface HelperDetailsDialogProps {
   helperDetails: HelperDetails;
   onSave: (data: HelperDetails) => void;
 }
-
-const SERVICE_SPECIALTIES = [
-  "Dog Walking",
-  "Cat Sitting",
-  "Pet Boarding",
-  "Pet Grooming",
-  "Puppy Training",
-  "Senior Pet Care",
-  "Medication Administration",
-  "House Sitting",
-];
 
 export function HelperDetailsDialog({ open, onOpenChange, helperDetails, onSave }: HelperDetailsDialogProps) {
   const [formData, setFormData] = useState<HelperDetails>(helperDetails);

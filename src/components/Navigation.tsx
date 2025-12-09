@@ -55,13 +55,14 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
           <button 
             onClick={() => onNavigate('landing')}
             className={`transition-colors ${currentPage === 'landing' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+            style={{ fontSize: '16px', fontWeight: 500 }}
           >
             Home
           </button>
          
           
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1 text-foreground hover:text-primary transition-colors">
+            <DropdownMenuTrigger className="flex items-center gap-1 text-foreground hover:text-primary transition-colors" style={{ fontSize: '16px', fontWeight: 500 }}>
               For Owners
               <ChevronDown className="w-4 h-4" />
             </DropdownMenuTrigger>
@@ -90,7 +91,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
           </DropdownMenu>
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1 text-foreground hover:text-primary transition-colors">
+            <DropdownMenuTrigger className="flex items-center gap-1 text-foreground hover:text-primary transition-colors" style={{ fontSize: '16px', fontWeight: 500 }}>
               For Helpers
               <ChevronDown className="w-4 h-4" />
             </DropdownMenuTrigger>
@@ -119,6 +120,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               onNavigate('messages');
             }}
             className={`transition-colors ${currentPage === 'messages' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+            style={{ fontSize: '16px', fontWeight: 500 }}
           >
             Messages
           </button>
@@ -136,7 +138,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
           </Button>
           {isAuthenticated ? (
             <>
-              {isOwner() && (
+              {isOwner() && !isHelper() && (
                 <Button 
                   onClick={() => {
                     if (!isAuthenticated) {
@@ -147,9 +149,59 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
                     onNavigate('post-task');
                   }}
                   className="bg-primary hover:bg-primary/90 text-white"
+                  style={{ fontSize: '16px', fontWeight: 500 }}
                 >
                   Post a Task
                 </Button>
+              )}
+              {isHelper() && !isOwner() && (
+                <Button 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please log in to continue");
+                      onNavigate("auth");
+                      return;
+                    }
+                    onNavigate('tasks');
+                  }}
+                  className="bg-primary hover:bg-primary/90 text-white"
+                  style={{ fontSize: '16px', fontWeight: 500 }}
+                >
+                  Browse Tasks
+                </Button>
+              )}
+              {isOwner() && isHelper() && (
+                <>
+                  <Button 
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        toast.error("Please log in to continue");
+                        onNavigate("auth");
+                        return;
+                      }
+                      onNavigate('post-task');
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-white"
+                    style={{ fontSize: '16px', fontWeight: 500 }}
+                  >
+                    Post a Task
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        toast.error("Please log in to continue");
+                        onNavigate("auth");
+                        return;
+                      }
+                      onNavigate('tasks');
+                    }}
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary/10"
+                    style={{ fontSize: '16px', fontWeight: 500 }}
+                  >
+                    Browse Tasks
+                  </Button>
+                </>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -217,22 +269,77 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             className={`flex flex-col items-center gap-1 ${currentPage === 'tasks' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <Home className="w-5 h-5" />
-            <span className="text-xs">Home</span>
+            <span className="text-sm">Home</span>
           </button>
-          <button 
-            onClick={() => {
-              if (!isAuthenticated) {
-                toast.error("Please log in to continue");
-                onNavigate("auth");
-                return;
-              }
-              onNavigate('post-task');
-            }}
-            className={`flex flex-col items-center gap-1 ${currentPage === 'post-task' ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            <Heart className="w-5 h-5" />
-            <span className="text-xs">Post</span>
-          </button>
+          
+          {isAuthenticated ? (
+            <>
+              {isOwner() && !isHelper() && (
+                <button 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please log in to continue");
+                      onNavigate("auth");
+                      return;
+                    }
+                    onNavigate('post-task');
+                  }}
+                  className={`flex flex-col items-center gap-1 ${currentPage === 'post-task' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span className="text-sm">Post</span>
+                </button>
+              )}
+              {isHelper() && !isOwner() && (
+                <button 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please log in to continue");
+                      onNavigate("auth");
+                      return;
+                    }
+                    onNavigate('tasks');
+                  }}
+                  className={`flex flex-col items-center gap-1 ${currentPage === 'tasks' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span className="text-sm">Browse</span>
+                </button>
+              )}
+              {isOwner() && isHelper() && (
+                <button 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please log in to continue");
+                      onNavigate("auth");
+                      return;
+                    }
+                    onNavigate('post-task');
+                  }}
+                  className={`flex flex-col items-center gap-1 ${currentPage === 'post-task' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <Heart className="w-5 h-5" />
+                  <span className="text-sm">Post</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <button 
+              onClick={() => {
+                if (!isAuthenticated) {
+                  toast.error("Please log in to continue");
+                  onNavigate("auth");
+                  return;
+                }
+                onNavigate('post-task');
+              }}
+              className={`flex flex-col items-center gap-1 ${currentPage === 'post-task' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Heart className="w-5 h-5" />
+              <span className="text-sm">Post</span>
+            </button>
+          )}
+          
           <button 
             onClick={() => {
               if (!isAuthenticated) {
@@ -245,7 +352,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             className={`flex flex-col items-center gap-1 ${currentPage === 'messages' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <MessageSquare className="w-5 h-5" />
-            <span className="text-xs">Messages</span>
+            <span className="text-sm">Messages</span>
           </button>
           <button 
             onClick={() => {
@@ -266,7 +373,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
             className={`flex flex-col items-center gap-1 ${currentPage === 'owner-profile' || currentPage === 'helper-profile' ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <User className="w-5 h-5" />
-            <span className="text-xs">Profile</span>
+            <span className="text-sm">Profile</span>
           </button>
         </div>
       </div>

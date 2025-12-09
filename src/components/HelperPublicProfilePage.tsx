@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import type { User as UserType } from "../contexts/UserContext";
+import { SERVICE_SPECIALTIES } from "../lib/constants";
 
 interface HelperPublicProfilePageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;

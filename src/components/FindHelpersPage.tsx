@@ -4,18 +4,20 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, DollarSign, Search, ArrowLeft, Heart, MessageSquare, Shield } from "lucide-react";
+import { Star, MapPin, Clock, DollarSign, Search, ArrowLeft, Heart, MessageSquare, Shield, User } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { toast } from "sonner";
 import { api } from "../lib/api";
-import type { User } from "../contexts/UserContext";
+import type { User as UserType } from "../contexts/UserContext";
+import { FIND_HELPERS_FILTERS } from "../lib/constants";
+import { EmptyState } from "./EmptyState";
 
 interface FindHelpersPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
 }
 
 // Backend User type for helpers
-interface HelperUser extends User {
+interface HelperUser extends UserType {
   _id: string;
   createdAt?: string;
   helperRating?: number;
@@ -48,14 +50,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useUser();
 
-  const filters = [
-    { id: "all", label: "All Services" },
-    { id: "walking", label: "Dog Walking" },
-    { id: "sitting", label: "Pet Sitting" },
-    { id: "boarding", label: "Pet Boarding" },
-    { id: "feeding", label: "Cat Feeding" },
-    { id: "training", label: "Training" },
-  ];
+  const filters = FIND_HELPERS_FILTERS;
 
   // Load helpers and tasks from backend
   useEffect(() => {
@@ -152,7 +147,7 @@ export function FindHelpersPage({ onNavigate }: FindHelpersPageProps) {
     const matchesSearch = helper.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          helper.bio.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === "all" || 
-                         helper.services.some(s => s.toLowerCase().includes(selectedFilter));
+                         helper.services.some(s => s.toLowerCase() === selectedFilter);
     return matchesSearch && matchesFilter;
   });
 
