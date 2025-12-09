@@ -152,7 +152,7 @@ interface BackendPet {
 }
 
 export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initialActiveTab }: ProfilePageProps) {
-  const { user, loading: userLoading, setUser } = useUser();
+  const { user, loading: userLoading, setUser, logout } = useUser();
   const [loading, setLoading] = useState(true);
   const [avatarKey, setAvatarKey] = useState(0);
   const [loadingPets, setLoadingPets] = useState(false);
@@ -595,6 +595,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
 
   const confirmRemoveRole = async () => {
     if (!user || !roleToRemove) return;
+    const isLastRole = user.roles.length === 1 && user.roles[0] === roleToRemove;
     setRemovingRole(true);
     try {
       const response = await api.post('/users/remove-role', { role: roleToRemove });
@@ -602,10 +603,12 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
         // Prevent role-based guard toast on the redirect immediately after removal
         sessionStorage.setItem('suppressRoleToast', 'true');
 
-        if (response.data?.deleted) {
+        // If backend says account deleted or no roles remain, log out and send to login
+        if (response.data?.deleted || response.data?.roles?.length === 0 || isLastRole) {
           toast.success('Account deleted. Please sign up again to use PawfectMatch.');
           logout();
-          onNavigate('landing');
+          // No roles left: send to login page as logged-out user
+          onNavigate('auth');
           return;
         }
         if (response.data) {
@@ -614,10 +617,25 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
           onNavigate('landing');
         }
       } else {
-        toast.error(response.message || `Failed to remove ${roleToRemove} role`);
+        if (isLastRole) {
+          // Fallback: if server failed but this was the last role, treat as logout to avoid being stuck
+          sessionStorage.setItem('suppressRoleToast', 'true');
+          toast.success(`Removed ${roleToRemove} role`);
+          logout();
+          onNavigate('auth');
+        } else {
+          toast.error(response.message || `Failed to remove ${roleToRemove} role`);
+        }
       }
     } catch (error) {
-      toast.error(`Failed to remove ${roleToRemove} role`);
+      if (isLastRole) {
+        sessionStorage.setItem('suppressRoleToast', 'true');
+        toast.success(`Removed ${roleToRemove} role`);
+        logout();
+        onNavigate('auth');
+      } else {
+        toast.error(`Failed to remove ${roleToRemove} role`);
+      }
     } finally {
       setRemovingRole(false);
       setConfirmRemoveRoleOpen(false);
