@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, Banknote, Shield, MessageCircle, ArrowLeft, Heart, Users, PawPrint } from "lucide-react";
+import { Star, MapPin, Clock, Banknote, Shield, MessageCircle, ArrowLeft, Heart, Users, PawPrint, Briefcase } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
@@ -569,181 +569,480 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
         </Button>
 
         <div className="space-y-6">
-          {/* First Row: Task Information + Owner Info */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Task Information - Takes 2 columns */}
-            <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '32px' }}>{task.title}</h1>
-                    <Badge 
-                      className={`${
-                        task.status === 'open' ? 'bg-green-500' :
-                        task.status === 'pending' ? 'bg-blue-500' :
-                        task.status === 'in_progress' ? 'bg-blue-500' :
-                        task.status === 'pending_confirmation' ? 'bg-yellow-500' :
-                        task.status === 'cancelled' ? 'bg-green-500' :
-                        task.status === 'completed' ? 'bg-gray-500' :
-                        'bg-primary'
-                      } text-white`}
-                      style={{ fontWeight: 600 }}
-                    >
-                      {task.status === 'open' && isHelper() ? 'pending' : task.status === 'pending_confirmation' ? 'pending confirmation' : task.status === 'open' ? task.status : task.status.replace(/_/g, ' ')}
-                    </Badge>
+          {/* Determine layout based on task status */}
+          {task.status === "open" || task.status === "pending" ? (
+            /* Layout for open/pending: Task Detail + Owner | Pet Info + Task Status */
+            <>
+              {/* First Row: Task Information + Owner Info */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Task Information - Takes 2 columns */}
+                <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '32px' }}>{task.title}</h1>
+                        <Badge 
+                          className={`${
+                            task.status === 'open' ? 'bg-green-500' :
+                            task.status === 'pending' ? 'bg-blue-500' :
+                            'bg-primary'
+                          } text-white`}
+                          style={{ fontWeight: 600 }}
+                        >
+                          {task.status === 'open' && isHelper() ? 'pending' : task.status}
+                        </Badge>
+                      </div>
+                      <Badge className="bg-primary text-white" style={{ fontWeight: 600 }}>{typeDisplay}</Badge>
+                    </div>
                   </div>
-                  <Badge className="bg-primary text-white" style={{ fontWeight: 600 }}>{typeDisplay}</Badge>
-                </div>
-              </div>
 
-              <div className="grid sm:grid-cols-3 gap-4 mb-6">
-                <div className="flex items-center gap-33">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-primary" />
+                  <div className="grid sm:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Location</div>
+                        <div style={{ fontWeight: 600 }}>{task.location}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Time</div>
+                        <div style={{ fontWeight: 600 }}>{timeDisplay}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Banknote className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Reward</div>
+                        <div className="text-primary" style={{ fontWeight: 700, fontSize: '24px' }}>{rewardDisplay}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Location</div>
-                    <div style={{ fontWeight: 600 }}>{task.location}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Time</div>
-                    <div style={{ fontWeight: 600 }}>{timeDisplay}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Banknote className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Reward</div>
-                    <div className="text-primary" style={{ fontWeight: 700, fontSize: '24px' }}>{rewardDisplay}</div>
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex-1">
-                <h3 className="mb-3" style={{ fontWeight: 600 }}>Task Description</h3>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {task.description || "No description provided."}
-                </p>
-              </div>
-            </Card>
-
-            {/* Owner Info - Takes 1 column */}
-            {task.postedBy && (
-              <Card className="p-6 border-0 shadow-md h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
-                  <Heart className="w-5 h-5 text-primary fill-primary" />
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task Owner</h3>
-                </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <Avatar 
-                    className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id, viewRole: 'owner' })}
-                  >
-                    <AvatarImage src={task.postedBy.profilePhoto} alt={task.postedBy.name} />
-                    <AvatarFallback className="bg-primary text-white">
-                      {task.postedBy.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 
-                        style={{ fontWeight: 600 }}
-                        className="cursor-pointer hover:text-primary transition-colors"
+                    <h3 className="mb-3" style={{ fontWeight: 600 }}>Task Description</h3>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {task.description || "No description provided."}
+                    </p>
+                  </div>
+                </Card>
+
+                {/* Owner Info - Takes 1 column */}
+                {task.postedBy && (
+                  <Card className="p-6 border-0 shadow-md h-full flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Heart className="w-5 h-5 text-primary fill-primary" />
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task Owner</h3>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar 
+                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id, viewRole: 'owner' })}
                       >
-                        {task.postedBy.name}
-                      </h4>
-                      <Shield className="w-4 h-4 text-primary" />
+                        <AvatarImage src={task.postedBy.profilePhoto} alt={task.postedBy.name} />
+                        <AvatarFallback className="bg-primary text-white">
+                          {task.postedBy.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 
+                            style={{ fontWeight: 600 }}
+                            className="cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id, viewRole: 'owner' })}
+                          >
+                            {task.postedBy.name}
+                          </h4>
+                          <Shield className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm" style={{ fontWeight: 600 }}>
+                            {formatRating(task.postedBy?.ownerRating)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-sm" style={{ fontWeight: 600 }}>
-                        {formatRating(task.postedBy?.ownerRating)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Owner stats to fill space */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-primary/5 rounded-lg px-3 py-2">
-                    <div className="text-primary" style={{ fontWeight: 700 }}>
-                      {allTasksForCalculation.filter(
-                        (t: any) => (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString()
-                      ).length}
+                    {/* Owner stats to fill space */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-primary/5 rounded-lg px-3 py-2">
+                        <div className="text-primary" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) => (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString()
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Tasks Posted</div>
+                      </div>
+                      <div className="bg-accent/5 rounded-lg px-3 py-2">
+                        <div className="text-accent" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) =>
+                              (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString() &&
+                              t.status === 'completed'
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Tasks Completed</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">Tasks Posted</div>
-                  </div>
-                  <div className="bg-accent/5 rounded-lg px-3 py-2">
-                    <div className="text-accent" style={{ fontWeight: 700 }}>
-                      {allTasksForCalculation.filter(
-                        (t: any) =>
-                          (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString() &&
-                          t.status === 'completed'
-                      ).length}
+
+                    <div className="flex gap-2 mt-auto">
+                      <Button 
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                        onClick={() => onNavigate('messages', { selectedUserId: task.postedBy?._id })}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground">Tasks Completed</div>
-                  </div>
-                </div>
+                  </Card>
+                )}
+              </div>
 
-                <div className="flex gap-2 mt-auto">
-                  <Button 
-                    className="flex-1 bg-primary hover:bg-primary/90 text-white"
-                    onClick={() => onNavigate('messages', { selectedUserId: task.postedBy?._id })}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Message
-                  </Button>
-                </div>
-              </Card>
-            )}
-          </div>
+              {/* Second Row: Pet Information + Task Status */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Pet Information - Takes 2 columns */}
+                {task.pet && (
+                  <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
+                    <h3 className="mb-4" style={{ fontWeight: 600 }}>Pet Information</h3>
+                    <div className="flex gap-6 flex-1">
+                      <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0">
+                        <ImageWithFallback
+                          src={petImage}
+                          alt={task.pet.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 style={{ fontWeight: 600 }}>{task.pet.name}</h4>
+                          <p className="text-muted-foreground">
+                            {task.pet.breed || task.pet.type}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
 
-          {/* Second Row: Pet Information + Task Status */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Pet Information - Takes 2 columns */}
-            {task.pet && (
-              <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
-                <h3 className="mb-4" style={{ fontWeight: 600 }}>Pet Information</h3>
-                <div className="flex gap-6 flex-1">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0">
-                    <ImageWithFallback
-                      src={petImage}
-                      alt={task.pet.name}
-                      className="w-full h-full object-cover"
-                    />
+                {/* Task Status - Takes 1 column */}
+                <Card className="p-6 border-0 shadow-md h-full flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
+                    <Badge 
+                      className={
+                        task.status === 'open'
+                          ? 'bg-accent !text-white border-transparent'
+                          : task.status === 'pending'
+                          ? 'bg-chart-6 !text-white border-transparent'
+                          : 'bg-secondary !text-secondary-foreground border-transparent'
+                      }
+                    >
+                      {task.status}
+                    </Badge>
                   </div>
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <h4 style={{ fontWeight: 600 }}>{task.pet.name}</h4>
-                      <p className="text-muted-foreground">
-                        {task.pet.breed || task.pet.type}
-                      </p>
+
+                  <div className="space-y-3 mt-auto">
+                    {isTaskOwner && task.applicants && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setApplicantsDialogOpen(true)}
+                        className="flex items-center gap-2 w-full"
+                      >
+                        <Users className="w-4 h-4" />
+                        View Applications ({task.applicants.length})
+                      </Button>
+                    )}
+
+                    {!isTaskOwner && isAuthenticated && (
+                      <>
+                        <Button 
+                          size="lg" 
+                          className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 rounded-full"
+                          onClick={handleApply}
+                          disabled={applying || hasApplied}
+                        >
+                          {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
+                        </Button>
+                        {hasApplied && (
+                          <p className="text-xs text-center text-primary">
+                            Your application has been submitted
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {/* Cancel Task */}
+                    {(isTaskOwner || isTaskHelper || isTaskApplicant) && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-red-500 text-red-600 hover:bg-red-50"
+                        onClick={handleCancelTask}
+                        disabled={canceling}
+                      >
+                        {canceling 
+                          ? (isTaskApplicant && !isTaskOwner && !isTaskHelper ? 'Withdrawing...' : 'Cancelling...')
+                          : (isTaskApplicant && !isTaskOwner && !isTaskHelper ? 'Withdraw Application' : 'Cancel Task')
+                        }
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </>
+          ) : (
+            /* Layout for other states: Task Detail + Owner | Pet Info + Helper | Task Status (full width) */
+            <>
+              {/* First Row: Task Information + Owner Info */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Task Information - Takes 2 columns */}
+                <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-primary" style={{ fontWeight: 700, fontSize: '32px' }}>{task.title}</h1>
+                        <Badge 
+                          className={`${
+                            task.status === 'in_progress' ? 'bg-blue-500' :
+                            task.status === 'pending_confirmation' ? 'bg-yellow-500' :
+                            task.status === 'cancelled' ? 'bg-green-500' :
+                            task.status === 'completed' ? 'bg-gray-500' :
+                            'bg-primary'
+                          } text-white`}
+                          style={{ fontWeight: 600 }}
+                        >
+                          {task.status === 'pending_confirmation' ? 'pending confirmation' : task.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                      <Badge className="bg-primary text-white" style={{ fontWeight: 600 }}>{typeDisplay}</Badge>
                     </div>
                   </div>
-                </div>
-              </Card>
-            )}
 
-            {/* Right column content - unified Task Status card for all states */}
-            <div className="space-y-4">
-              <Card className="p-6 border-0 shadow-md h-full flex flex-col gap-4">
+                  <div className="grid sm:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Location</div>
+                        <div style={{ fontWeight: 600 }}>{task.location}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Time</div>
+                        <div style={{ fontWeight: 600 }}>{timeDisplay}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Banknote className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Reward</div>
+                        <div className="text-primary" style={{ fontWeight: 700, fontSize: '24px' }}>{rewardDisplay}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <h3 className="mb-3" style={{ fontWeight: 600 }}>Task Description</h3>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {task.description || "No description provided."}
+                    </p>
+                  </div>
+                </Card>
+
+                {/* Owner Info - Takes 1 column */}
+                {task.postedBy && (
+                  <Card className="p-6 border-0 shadow-md h-full flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Heart className="w-5 h-5 text-primary fill-primary" />
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task Owner</h3>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar 
+                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id, viewRole: 'owner' })}
+                      >
+                        <AvatarImage src={task.postedBy.profilePhoto} alt={task.postedBy.name} />
+                        <AvatarFallback className="bg-primary text-white">
+                          {task.postedBy.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 
+                            style={{ fontWeight: 600 }}
+                            className="cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => onNavigate('helper-public-profile', { userId: task.postedBy?._id, viewRole: 'owner' })}
+                          >
+                            {task.postedBy.name}
+                          </h4>
+                          <Shield className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm" style={{ fontWeight: 600 }}>
+                            {formatRating(task.postedBy?.ownerRating)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Owner stats */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-primary/5 rounded-lg px-3 py-2">
+                        <div className="text-primary" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) => (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString()
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Tasks Posted</div>
+                      </div>
+                      <div className="bg-accent/5 rounded-lg px-3 py-2">
+                        <div className="text-accent" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) =>
+                              (t.postedBy?._id || t.postedBy)?.toString() === (task.postedBy?._id || '').toString() &&
+                              t.status === 'completed'
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Tasks Completed</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-auto">
+                      <Button 
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                        onClick={() => onNavigate('messages', { selectedUserId: task.postedBy?._id })}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+              </div>
+
+              {/* Second Row: Pet Information + Helper Info */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Pet Information - Takes 2 columns */}
+                {task.pet && (
+                  <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
+                    <h3 className="mb-4" style={{ fontWeight: 600 }}>Pet Information</h3>
+                    <div className="flex gap-6 flex-1">
+                      <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0">
+                        <ImageWithFallback
+                          src={petImage}
+                          alt={task.pet.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 style={{ fontWeight: 600 }}>{task.pet.name}</h4>
+                          <p className="text-muted-foreground">
+                            {task.pet.breed || task.pet.type}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Helper Info - Takes 1 column */}
+                {task.assignedTo && (
+                  <Card className="p-6 border-0 shadow-md h-full flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Briefcase className="w-5 h-5 text-primary fill-primary" />
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Task Helper</h3>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar 
+                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => onNavigate('helper-public-profile', { userId: task.assignedTo?._id, viewRole: 'helper' })}
+                      >
+                        <AvatarImage src={task.assignedTo.profilePhoto} alt={task.assignedTo.name} />
+                        <AvatarFallback className="bg-accent text-white">
+                          {task.assignedTo.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 
+                            style={{ fontWeight: 600 }}
+                            className="cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => onNavigate('helper-public-profile', { userId: task.assignedTo?._id, viewRole: 'helper' })}
+                          >
+                            {task.assignedTo.name}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm" style={{ fontWeight: 600 }}>
+                            {formatRating(task.assignedTo?.helperRating)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Helper stats */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-accent/5 rounded-lg px-3 py-2">
+                        <div className="text-accent" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) => {
+                              const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+                              return assignedToId === (task.assignedTo?._id || '').toString() && t.status === 'completed';
+                            }
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Tasks Done</div>
+                      </div>
+                      <div className="bg-primary/5 rounded-lg px-3 py-2">
+                        <div className="text-primary" style={{ fontWeight: 700 }}>
+                          {allTasksForCalculation.filter(
+                            (t: any) => {
+                              const assignedToId = t.assignedTo?._id?.toString() || t.assignedTo?._id || t.assignedTo;
+                              return assignedToId === (task.assignedTo?._id || '').toString();
+                            }
+                          ).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Total Tasks</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-auto">
+                      <Button 
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                        onClick={() => onNavigate('messages', { selectedUserId: task.assignedTo?._id })}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+              </div>
+
+              {/* Third Row: Task Status (full width) */}
+              <Card className="p-6 border-0 shadow-md flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h3 className="mb-0" style={{ fontWeight: 600 }}>Task Status</h3>
                   <Badge 
                     className={
-                      task.status === 'open'
-                        ? 'bg-accent !text-white border-transparent'
-                        : task.status === 'pending'
-                        ? 'bg-chart-6 !text-white border-transparent'
-                        : task.status === 'in_progress'
+                      task.status === 'in_progress'
                         ? 'bg-chart-5 !text-white border-transparent'
                         : task.status === 'pending_confirmation'
                         ? 'bg-chart-7 !text-white border-transparent'
@@ -758,47 +1057,7 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                   </Badge>
                 </div>
 
-                <div className="bg-secondary/20 p-4 rounded-2xl">
-                  <div className="text-sm text-muted-foreground mb-1">You'll earn</div>
-                  <div className="text-primary" style={{ fontWeight: 700, fontSize: '36px' }}>{rewardDisplay}</div>
-                  <div className="text-sm text-muted-foreground">per session</div>
-                </div>
-
                 <div className="space-y-3 mt-auto">
-                  {/* Open / Pending */}
-                  {(task.status === "open" || task.status === "pending") && (
-                    <>
-                      {isTaskOwner && task.applicants && (
-                        <Button
-                          variant="outline"
-                          onClick={() => setApplicantsDialogOpen(true)}
-                          className="flex items-center gap-2 w-full"
-                        >
-                          <Users className="w-4 h-4" />
-                          View Applications ({task.applicants.length})
-                        </Button>
-                      )}
-
-                      {!isTaskOwner && isAuthenticated && (
-                        <>
-                          <Button 
-                            size="lg" 
-                            className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 rounded-full"
-                            onClick={handleApply}
-                            disabled={applying || hasApplied}
-                          >
-                            {applying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply Now'}
-                          </Button>
-                          {hasApplied && (
-                            <p className="text-xs text-center text-primary">
-                              Your application has been submitted
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-
                   {/* In Progress */}
                   {task.status === "in_progress" && (
                     <>
@@ -858,33 +1117,92 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
 
                   {/* Completed */}
                   {task.status === "completed" && (
-                    <div className="space-y-3">
-                      {/* Hide review details from status card; only show CTA when not submitted */}
+                    <div className="space-y-4">
                       {reviewStatusLoading ? (
                         <div className="text-sm text-muted-foreground text-center">
                           Loading review status...
                         </div>
-                      ) : hasSubmittedReview ? (
-                        <div className="text-sm text-muted-foreground text-center">
-                          Review submitted.
-                        </div>
                       ) : (
-                        <Button 
-                          size="lg"
-                          className="w-full !bg-primary hover:!bg-primary/90 !text-white rounded-full"
-                          onClick={() => setReviewDialogOpen(true)}
-                        >
-                          Click to Review
-                        </Button>
+                        <>
+                          {/* Review submitted by current user */}
+                          {userReview && (
+                            <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-sm font-semibold">Your Review</h4>
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`w-4 h-4 ${
+                                        i < userReview.rating
+                                          ? 'text-yellow-500 fill-yellow-500'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              {userReview.comment && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  {userReview.comment}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Review received from the other party */}
+                          {receivedReview && (
+                            <div className="bg-accent/5 rounded-lg p-4 border border-accent/20">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-sm font-semibold">
+                                  Review from {receivedReview.reviewerName}
+                                </h4>
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`w-4 h-4 ${
+                                        i < receivedReview.rating
+                                          ? 'text-yellow-500 fill-yellow-500'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              {receivedReview.comment && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  {receivedReview.comment}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Show review button if user hasn't submitted review yet */}
+                          {!hasSubmittedReview && (
+                            <Button 
+                              size="lg"
+                              className="w-full !bg-primary hover:!bg-primary/90 !text-white rounded-full"
+                              onClick={() => setReviewDialogOpen(true)}
+                            >
+                              Click to Review
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
+
+                  {/* Cancelled */}
+                  {task.status === "cancelled" && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      This task has been cancelled.
+                    </p>
+                  )}
                 </div>
               </Card>
-
-            </div>
-          </div>
-
+            </>
+          )}
         </div>
       </div>
 
