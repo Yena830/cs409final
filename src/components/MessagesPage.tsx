@@ -399,7 +399,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         }
       };
     }
-  }, [user?._id, selectedConversation]);
+  }, [user?._id]); // Removed selectedConversation from dependencies to prevent reinitialization on conversation change
 
   // Load user conversation list
   useEffect(() => {
@@ -463,6 +463,22 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     };
     
     markAsRead();
+  }, [selectedChat, user?._id]);
+  
+  // Ensure WebSocket connection is healthy when changing conversations
+  useEffect(() => {
+    if (!selectedChat || !user) return;
+    
+    // Verify WebSocket connection
+    if (socketRef.current && !socketRef.current.connected) {
+      console.warn("WebSocket disconnected when changing conversation, attempting to emit join_room");
+    }
+    
+    // Re-join room to ensure we receive messages for this conversation
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("join_room", user._id);
+      console.log("Re-joined room with user ID:", user._id);
+    }
   }, [selectedChat, user?._id]);
 
   // Load messages for the selected conversation
@@ -542,7 +558,13 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           read: false
         };
         
-        // Send message through WebSocket for real-time delivery
+        // Check WebSocket connection and try to reconnect if needed
+        if (!socketRef.current || !socketRef.current.connected) {
+          console.warn("WebSocket not connected, attempting to reconnect...");
+          // We'll fall back to API in this case
+        }
+        
+        // Send message through WebSocket if connected, otherwise use API
         if (socketRef.current && socketRef.current.connected) {
           // Emit message through WebSocket
           socketRef.current.emit('send_message', messageData);
