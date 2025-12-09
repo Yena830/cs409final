@@ -86,12 +86,8 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
         login(user, token);
         toast.success('Welcome back!');
         
-        // Redirect to profile page based on user roles
-        if (user.roles.includes('helper')) {
-          onNavigate('helper-profile');
-        } else {
-          onNavigate('owner-profile');
-        }
+        // Redirect to home page after successful login
+        onNavigate('landing');
       } else {
         // More specific feedback for invalid credentials
         toast.error('Email or password is incorrect');
