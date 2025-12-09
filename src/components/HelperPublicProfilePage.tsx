@@ -117,7 +117,7 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId, viewRole
           name: userData.name
         });
         // Use setTimeout to ensure state is updated, but pass roles directly
-        loadReviews(userData._id, userData.roles, viewRole);
+        loadReviews(userData._id);
         // Load tasks to calculate tasks done
         loadTasks(userData._id);
       } else {
@@ -168,82 +168,25 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId, viewRole
     }
   };
 
-  const loadReviews = async (userId: string, userRoles?: string[], preferredRole?: 'helper' | 'owner') => {
+  const loadReviews = async (userId: string) => {
     if (!userId) return;
     
     setLoadingReviews(true);
     try {
-      // Determine the role to filter reviews by
-      // If user has helper role, show reviews where they were the helper
-      // If user has owner role (and not helper), show reviews where they were the owner
-      const roles = userRoles || helperUser?.roles || [];
-      const isHelper = roles.includes('helper');
-      const isOwner = roles.includes('owner');
-      
-      console.log('HelperPublicProfilePage - loadReviews called:', {
-        userId,
-        userRoles: roles,
-        isHelper,
-        isOwner,
-        helperUserRoles: helperUser?.roles
-      });
-      
-      // Decide primary role: prefer explicit viewRole, otherwise default to helper then owner
-      const primaryRole = preferredRole
-        ? preferredRole
-        : (isHelper ? 'helper' : (isOwner ? 'owner' : 'helper'));
-
-      // Helper to fetch reviews by role
-      const fetchReviewsByRole = async (role: 'helper' | 'owner') => {
-        console.log(`HelperPublicProfilePage - Loading reviews with role=${role} for userId=${userId}`);
-        const response = await api.get<Review[]>(`/users/${userId}/reviews?role=${role}`);
-        console.log(`HelperPublicProfilePage - ${role} reviews API response:`, response);
-        if (response.success && response.data) {
-          const data = Array.isArray(response.data) ? response.data : [];
-          console.log(`HelperPublicProfilePage - Reviews for ${role}:`, {
-            reviewsCount: data.length,
-            reviews: data
-          });
-          return data;
-        }
-        return [];
-      };
-
-      // Fetch all reviews without role filter (fallback)
-      const fetchReviewsAll = async () => {
-        console.log(`HelperPublicProfilePage - Loading reviews without role for userId=${userId}`);
-        const response = await api.get<Review[]>(`/users/${userId}/reviews`);
-        if (response.success && response.data) {
-          const data = Array.isArray(response.data) ? response.data : [];
-          console.log('HelperPublicProfilePage - Reviews without role:', {
-            reviewsCount: data.length,
-            reviews: data
-          });
-          return data;
-        }
-        return [];
-      };
-
-      let reviewsData: Review[] = await fetchReviewsByRole(primaryRole);
-
-      // If explicit role requested but empty, try all reviews (owner role may not be filtered)
-      if (preferredRole && reviewsData.length === 0) {
-        reviewsData = await fetchReviewsAll();
+      // For helper profile page, always load reviews where user was the helper
+      console.log(`HelperPublicProfilePage - Loading reviews for helper userId=${userId}`);
+      const response = await api.get<Review[]>(`/users/${userId}/reviews?role=helper`);
+      console.log(`HelperPublicProfilePage - helper reviews API response:`, response);
+      if (response.success && response.data) {
+        const data = Array.isArray(response.data) ? response.data : [];
+        console.log(`HelperPublicProfilePage - Reviews for helper:`, {
+          reviewsCount: data.length,
+          reviews: data
+        });
+        setReviews(data);
+      } else {
+        setReviews([]);
       }
-
-      // Only fallback to the other role when no explicit preferred role was provided
-      if (!preferredRole && reviewsData.length === 0 && isHelper && isOwner) {
-        const fallbackRole = primaryRole === 'helper' ? 'owner' : 'helper';
-        reviewsData = await fetchReviewsByRole(fallbackRole);
-      }
-      
-      console.log(`HelperPublicProfilePage - Final reviews for ${userId}:`, {
-        reviewsCount: reviewsData.length,
-        reviews: reviewsData,
-        userRoles: roles,
-        finalRole: primaryRole
-      });
-      setReviews(reviewsData);
     } catch (error) {
       console.error('Failed to load reviews:', error);
       setReviews([]);
