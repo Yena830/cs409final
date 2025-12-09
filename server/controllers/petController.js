@@ -9,7 +9,7 @@ const uploadMiddleware = useCloudinary
 // Create a new pet
 export const createPet = async (req, res) => {
   try {
-    const { name, type, breed, height, weight, temperament, photos } = req.body;
+    const { name, type, breed, age, gender, height, weight, notes, photos } = req.body;
 
     // Validate required fields
     if (!name || !type) {
@@ -24,9 +24,11 @@ export const createPet = async (req, res) => {
       name,
       type,
       breed,
+      age,
+      gender,
       height,
       weight,
-      temperament,
+      notes,
       photos: photos || [],
       owner: req.user.id,
     });

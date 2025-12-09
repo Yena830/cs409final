@@ -9,12 +9,16 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
+import defaultDog from "../assets/default-dog.jpg";
+import defaultCat from "../assets/default-cat.jpg";
+import defaultBird from "../assets/default-bird.jpg";
+import defaultRabbit from "../assets/default-rabbit.jpg";
 
 const DEFAULT_PET_IMAGES: Record<string, string> = {
-  dog: "https://placehold.co/600x600/FFB84D/FFFFFF?text=Dog",
-  cat: "https://placehold.co/600x600/FFB6C1/FFFFFF?text=Cat",
-  bird: "https://placehold.co/600x600/87CEEB/FFFFFF?text=Bird",
-  rabbit: "https://placehold.co/600x600/DDA0DD/FFFFFF?text=Rabbit",
+  dog: defaultDog,
+  cat: defaultCat,
+  bird: defaultBird,
+  rabbit: defaultRabbit,
   other: "https://placehold.co/600x600/98FB98/FFFFFF?text=Pet",
 };
 
@@ -24,9 +28,11 @@ interface BackendPet {
   name: string;
   type: string;
   breed?: string;
+  age?: number;
+  gender?: string;
   height?: number;
   weight?: number;
-  temperament?: string;
+  notes?: string;
   photos?: string[];
   owner?: string;
 }
@@ -46,9 +52,11 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
     name: "",
     type: "dog",
     breed: "",
+    age: "",
+    gender: "",
     height: "",
     weight: "",
-    temperament: "",
+    notes: "",
     image: "",
   });
 
@@ -61,9 +69,11 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
           name: pet.name || "",
           type: pet.type || "dog",
           breed: pet.breed || "",
+          age: pet.age?.toString() || "",
+          gender: pet.gender || "",
           height: pet.height?.toString() || "",
           weight: pet.weight?.toString() || "",
-          temperament: pet.temperament || "",
+          notes: pet.notes || "",
           image: pet.photos?.[0] || "",
         });
       } else {
@@ -72,9 +82,11 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
           name: "",
           type: "dog",
           breed: "",
+          age: "",
+          gender: "",
           height: "",
           weight: "",
-          temperament: "",
+          notes: "",
           image: DEFAULT_PET_IMAGES.dog,
         });
       }
@@ -109,11 +121,18 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
         name: formData.name.trim(),
         type: formData.type,
         breed: formData.breed?.trim() || undefined,
-        temperament: formData.temperament?.trim() || undefined,
+        gender: formData.gender?.trim() || undefined,
+        notes: formData.notes?.trim() || undefined,
         photos: formData.image ? [formData.image] : [],
       };
 
-      // Convert height and weight to numbers if provided
+      // Convert age, height and weight to numbers if provided
+      if (formData.age) {
+        const ageNum = parseFloat(formData.age);
+        if (!isNaN(ageNum)) {
+          petData.age = ageNum;
+        }
+      }
       if (formData.height) {
         const heightNum = parseFloat(formData.height);
         if (!isNaN(heightNum)) {
@@ -364,15 +383,47 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
                 disabled={loading}
               />
             </div>
+
+            {/* Age */}
+            <div className="space-y-2">
+              <Label htmlFor="age">Age</Label>
+              <Input
+                id="age"
+                type="number"
+                value={formData.age}
+                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                placeholder="e.g., 3"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Gender */}
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                value={formData.gender}
+                onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                disabled={loading}
+              >
+                <SelectTrigger id="gender">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Temperament */}
+          {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="temperament">Temperament</Label>
+            <Label htmlFor="notes">Notes</Label>
             <Textarea
-              id="temperament"
-              value={formData.temperament}
-              onChange={(e) => setFormData({ ...formData, temperament: e.target.value })}
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Describe your pet's personality, behavior, and any special needs..."
               rows={4}
               disabled={loading}

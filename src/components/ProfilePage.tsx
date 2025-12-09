@@ -20,6 +20,7 @@ import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import { Users } from "lucide-react";
 import { User as UserIcon } from "lucide-react";
+<<<<<<< HEAD
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,18 +31,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+=======
+import defaultDog from "../assets/default-dog.jpg";
+import defaultCat from "../assets/default-cat.jpg";
+import defaultBird from "../assets/default-bird.jpg";
+import defaultRabbit from "../assets/default-rabbit.jpg";
+>>>>>>> main
 
 const DEFAULT_PET_IMAGES: Record<string, string> = {
-  dog: "https://placehold.co/600x600/FFB84D/FFFFFF?text=Dog",
-  cat: "https://placehold.co/600x600/FFB6C1/FFFFFF?text=Cat",
-  bird: "https://placehold.co/600x600/87CEEB/FFFFFF?text=Bird",
-  rabbit: "https://placehold.co/600x600/DDA0DD/FFFFFF?text=Rabbit",
+  dog: defaultDog,
+  cat: defaultCat,
+  bird: defaultBird,
+  rabbit: defaultRabbit,
   other: "https://placehold.co/600x600/98FB98/FFFFFF?text=Pet",
 };
 
 // 获取宠物默认图片的函数
-const getDefaultPetImage = (petType: string) => {
-  return DEFAULT_PET_IMAGES[petType?.toLowerCase()] || DEFAULT_PET_IMAGES.other;
+const getDefaultPetImage = (petType?: string) => {
+  if (!petType) return DEFAULT_PET_IMAGES.other;
+  return DEFAULT_PET_IMAGES[petType.toLowerCase()] || DEFAULT_PET_IMAGES.other;
 };
 
 interface ProfilePageProps {
@@ -57,7 +65,9 @@ interface Pet {
   breed?: string;
   height?: number;
   weight?: number;
-  temperament?: string;
+  age?: number;
+  gender?: string;
+  notes?: string;
   photos?: string[];
   owner: string;
 }
@@ -134,7 +144,9 @@ interface BackendPet {
   breed?: string;
   height?: number;
   weight?: number;
-  temperament?: string;
+  age?: number;
+  gender?: string;
+  notes?: string;
   photos?: string[];
   owner?: string;
 }
@@ -1222,10 +1234,12 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                             {pet.height && <span>Height: {pet.height} in</span>}
                             {pet.weight && <span>Weight: {pet.weight} lbs</span>}
+                            {pet.age && <span>Age: {pet.age} {pet.age === 1 ? 'year' : 'years'}</span>}
+                            {pet.gender && <span>Gender: {pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1)}</span>}
                           </div>
-                          {pet.temperament && (
+                          {pet.notes && (
                             <p className="text-sm text-muted-foreground line-clamp-2">
-                              {pet.temperament}
+                              {pet.notes}
                             </p>
                           )}
                         </div>
@@ -1292,7 +1306,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                     return null;
                   }
                   
-                  const petImage = task?.pet?.photos?.[0] ?? "https://placehold.co/600x400?text=No+Pet+Photo";
+                  const petImage = task?.pet?.photos?.[0] ?? getDefaultPetImage(task?.pet?.type);
                   const applicantsCount = task.applicants?.length || 0;
                   const taskStatus = task.status?.trim() || '';
                   
