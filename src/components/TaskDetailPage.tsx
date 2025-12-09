@@ -441,7 +441,8 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
     try {
       const response = await api.post(`/tasks/${taskId}/cancel`, {});
       if (response.success) {
-        toast.success("Task cancelled successfully.");
+        // Use the message from backend which will be different for applicants vs owners/helpers
+        toast.success(response.message || "Operation completed successfully.");
         await loadTask(); // Refresh task state
       } else {
         toast.error(response.message || "Failed to cancel task");
@@ -840,7 +841,7 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                     </>
                   )}
 
-                  {/* Cancel Task (owner, assigned helper, or applicant) */}
+                  {/* Cancel Task (owner, assigned helper) or Withdraw Application (applicant) */}
                   {(isTaskOwner || isTaskHelper || isTaskApplicant) && task.status !== "completed" && task.status !== "cancelled" && (
                     <Button
                       variant="outline"
@@ -848,7 +849,10 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                       onClick={handleCancelTask}
                       disabled={canceling}
                     >
-                      {canceling ? 'Cancelling...' : 'Cancel Task'}
+                      {canceling 
+                        ? (isTaskApplicant && !isTaskOwner && !isTaskHelper ? 'Withdrawing...' : 'Cancelling...')
+                        : (isTaskApplicant && !isTaskOwner && !isTaskHelper ? 'Withdraw Application' : 'Cancel Task')
+                      }
                     </Button>
                   )}
 

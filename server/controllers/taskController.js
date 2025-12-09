@@ -403,7 +403,7 @@ export const confirmTask = async (req, res) => {
   }
 };
 
-// Cancel task (owner or assigned helper)
+// Cancel task (owner or assigned helper) or withdraw application (applicant only)
 export const cancelTask = async (req, res) => {
   try {
     const { id } = req.params;
@@ -450,6 +450,48 @@ export const cancelTask = async (req, res) => {
       });
     }
 
+    // If user is only an applicant (not owner or assigned helper), withdraw application instead
+    if (isApplicant && !isOwner && !isAssignedHelper) {
+      // Prevent withdrawing from completed or cancelled tasks
+      if (task.status === 'completed' || task.status === 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot withdraw application from this task',
+        });
+      }
+
+      // Remove user from applicants list
+      task.applicants = task.applicants.filter(
+        applicantId => applicantId.toString() !== userIdStr
+      );
+
+      // If no applicants left and task is pending, change status back to open
+      if (task.applicants.length === 0 && task.status === 'pending') {
+        task.status = 'open';
+        console.log(`Task ${id} status changed from 'pending' to 'open' (no applicants left)`);
+      }
+
+      await task.save();
+
+      // Remove task from user's tasksApplied array
+      await User.findByIdAndUpdate(userId, {
+        $pull: { tasksApplied: task._id },
+      });
+
+      const updatedTask = await Task.findById(id)
+        .populate('pet', 'name type photos')
+        .populate('postedBy', 'name profilePhoto ownerRating')
+        .populate('assignedTo', 'name profilePhoto helperRating')
+        .populate('applicants', 'name profilePhoto helperRating location specialties bio');
+
+      return res.json({
+        success: true,
+        data: updatedTask,
+        message: 'Application withdrawn successfully',
+      });
+    }
+
+    // For owner or assigned helper: cancel the entire task
     // Prevent cancelling completed tasks
     if (task.status === 'completed' || task.status === 'cancelled') {
       return res.status(400).json({
