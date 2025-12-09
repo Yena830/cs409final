@@ -93,9 +93,9 @@ export function PetFormDialog({ open, onOpenChange, pet, onSave }: PetFormDialog
     }
   }, [open, pet]);
 
-  // 当宠物类型改变时更新默认图像
+  // Update default image when pet type changes
   const handleTypeChange = (value: string) => {
-    // 只有当用户没有上传自定义图片时才更新默认图片
+    // Only update default image if user hasn't uploaded a custom image
     setFormData(prev => ({
       ...prev,
       type: value,

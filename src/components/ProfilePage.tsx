@@ -46,7 +46,7 @@ const DEFAULT_PET_IMAGES: Record<string, string> = {
   other: "https://placehold.co/600x600/98FB98/FFFFFF?text=Pet",
 };
 
-// 获取宠物默认图片的函数
+// Function to get default pet image
 const getDefaultPetImage = (petType?: string) => {
   if (!petType) return DEFAULT_PET_IMAGES.other;
   return DEFAULT_PET_IMAGES[petType.toLowerCase()] || DEFAULT_PET_IMAGES.other;
@@ -159,7 +159,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [activeTab, setActiveTab] = useState<'pets' | 'tasks' | 'reviews'>(initialActiveTab || 'tasks');
-  const [addingRole, setAddingRole] = useState(false); // 新增状态用于跟踪角色添加过程
+  const [addingRole, setAddingRole] = useState(false); // New state to track role addition process
   const [removingRole, setRemovingRole] = useState(false);
   const [confirmRemoveRoleOpen, setConfirmRemoveRoleOpen] = useState(false);
   const [roleToRemove, setRoleToRemove] = useState<'owner' | 'helper' | null>(null);
@@ -527,11 +527,11 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     }
   };
 
-  // 添加切换角色的功能
+  // Add role switching functionality
   const handleAddRole = async (role: 'owner' | 'helper') => {
     if (!user) return;
 
-    // 检查用户是否已经有这个角色
+    // Check if user already has this role
     if (user.roles.includes(role)) {
       toast.info(`You already have the ${role} role`);
       return;
@@ -542,11 +542,11 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
       const response = await api.post<any>('/users/add-role', { role });
 
       if (response.success && response.data) {
-        // 更新用户上下文
+        // Update user context
         setUser(response.data);
         toast.success(`Successfully added ${role} role!`);
 
-        // 如果添加的是helper角色且当前在owner profile页面，提示用户可以切换视图
+        // If adding helper role and currently on owner profile page, notify user they can switch view
         if (role === 'helper' && userType === 'owner') {
           toast.info('You can now switch to helper view');
         }
@@ -984,7 +984,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                     Edit Profile
                   </Button>
 
-                  {/* 添加角色切换按钮 */}
+                  {/* Add role switching button */}
                   {!addingRole && user && (
                     <>
                       {userType === 'owner' && !user.roles.includes('helper') && (

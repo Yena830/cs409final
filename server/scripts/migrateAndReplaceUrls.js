@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * 迁移本地上传文件到Cloudinary并更新数据库中的URL
- * 此脚本会将 uploads/ 目录中的所有图片文件上传到Cloudinary，
- * 并更新数据库中对应的图片URL
+ * Migrate locally uploaded files to Cloudinary and update URLs in database
+ * This script will upload all image files from the uploads/ directory to Cloudinary,
+ * and update the corresponding image URLs in the database
  */
 
 import fs from 'fs';
@@ -12,154 +12,154 @@ import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-// 加载环境变量
+// Load environment variables
 dotenv.config({ path: path.resolve('./server/.env') });
 
-// 配置Cloudinary
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 检查Cloudinary配置
+// Check Cloudinary configuration
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-  console.error('错误: 请在 .env 文件中配置Cloudinary环境变量');
-  console.error('需要配置: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+  console.error('Error: Please configure Cloudinary environment variables in .env file');
+  console.error('Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
   process.exit(1);
 }
 
-// MongoDB连接
+// MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
-  console.error('错误: 请在 .env 文件中配置MONGODB_URI');
+  console.error('Error: Please configure MONGODB_URI in .env file');
   process.exit(1);
 }
 
-// 连接到MongoDB
+// Connect to MongoDB
 async function connectDB() {
   try {
     await mongoose.connect(MONGODB_URI);
-    console.log('✓ 成功连接到MongoDB');
+    console.log('✓ Successfully connected to MongoDB');
   } catch (error) {
-    console.error('✗ 连接MongoDB失败:', error.message);
+    console.error('✗ Failed to connect to MongoDB:', error.message);
     process.exit(1);
   }
 }
 
-// 导入模型
+// Import models
 let User, Pet;
 async function importModels() {
   try {
     User = (await import('../models/user.js')).default;
     Pet = (await import('../models/pet.js')).default;
-    console.log('✓ 成功加载数据模型');
+    console.log('✓ Successfully loaded data models');
   } catch (error) {
-    console.error('✗ 加载数据模型失败:', error.message);
+    console.error('✗ Failed to load data models:', error.message);
     process.exit(1);
   }
 }
 
-// 获取上传目录路径
+// Get upload directory path
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 
-// 支持的图片格式
+// Supported image formats
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
 
-// 存储文件映射关系
+// Store file mapping relationships
 const fileMapping = new Map();
 
 async function migrateFiles() {
   try {
-    // 检查上传目录是否存在
+    // Check if upload directory exists
     if (!fs.existsSync(uploadDir)) {
-      console.log(`上传目录不存在: ${uploadDir}`);
+      console.log(`Upload directory does not exist: ${uploadDir}`);
       return;
     }
 
-    // 读取目录中的所有文件
+    // Read all files in directory
     const files = fs.readdirSync(uploadDir);
     
     if (files.length === 0) {
-      console.log('上传目录中没有文件');
+      console.log('No files in upload directory');
       return;
     }
 
-    console.log(`找到 ${files.length} 个文件，开始迁移...`);
+    console.log(`Found ${files.length} files, starting migration...`);
     
     let successCount = 0;
     let errorCount = 0;
     
-    // 遍历所有文件
+    // Iterate through all files
     for (const file of files) {
       const filePath = path.join(uploadDir, file);
       const ext = path.extname(file).toLowerCase();
       
-      // 只处理图片文件
+      // Only process image files
       if (imageExtensions.includes(ext)) {
         try {
-          console.log(`正在上传: ${file}`);
+          console.log(`Uploading: ${file}`);
           
-          // 上传到Cloudinary
+          // Upload to Cloudinary
           const result = await cloudinary.uploader.upload(filePath, {
             folder: 'pawfectmatch_uploads',
             public_id: path.parse(file).name,
-            overwrite: false, // 不覆盖已存在的文件
-            invalidate: true, // 使CDN缓存失效
+            overwrite: false, // Don't overwrite existing files
+            invalidate: true, // Invalidate CDN cache
           });
           
-          // 保存映射关系
+          // Save mapping relationship
           const localUrl = `/uploads/${file}`;
           fileMapping.set(localUrl, result.secure_url);
           
-          console.log(`✓ 成功上传: ${file} -> ${result.secure_url}`);
+          console.log(`✓ Successfully uploaded: ${file} -> ${result.secure_url}`);
           successCount++;
         } catch (error) {
-          console.error(`✗ 上传失败: ${file}`, error.message);
+          console.error(`✗ Upload failed: ${file}`, error.message);
           errorCount++;
         }
       } else {
-        console.log(`跳过非图片文件: ${file}`);
+        console.log(`Skipping non-image file: ${file}`);
       }
     }
     
-    console.log(`\n文件迁移完成!`);
-    console.log(`成功: ${successCount} 个文件`);
-    console.log(`失败: ${errorCount} 个文件`);
+    console.log(`\nFile migration completed!`);
+    console.log(`Success: ${successCount} files`);
+    console.log(`Failed: ${errorCount} files`);
     
     return successCount > 0;
     
   } catch (error) {
-    console.error('迁移文件过程中发生错误:', error.message);
+    console.error('Error during file migration:', error.message);
     return false;
   }
 }
 
 async function updateDatabaseUrls() {
   if (fileMapping.size === 0) {
-    console.log('没有文件需要更新数据库URL');
+    console.log('No files need database URL updates');
     return;
   }
 
-  console.log(`\n开始更新数据库中的图片URL...`);
+  console.log(`\nStarting to update image URLs in database...`);
   
   let userUpdates = 0;
   let petUpdates = 0;
   
   try {
-    // 更新用户头像URL
+    // Update user profile photo URLs
     for (const [localUrl, cloudinaryUrl] of fileMapping.entries()) {
-      // 查找包含本地URL的用户
+      // Find users containing local URL
       const users = await User.find({ profilePhoto: { $regex: localUrl } });
       
       for (const user of users) {
         const updatedUrl = user.profilePhoto.replace(localUrl, cloudinaryUrl);
         await User.findByIdAndUpdate(user._id, { profilePhoto: updatedUrl });
-        console.log(`✓ 更新用户 ${user.username} 的头像URL: ${localUrl} -> ${cloudinaryUrl}`);
+        console.log(`✓ Updated profile photo URL for user ${user.username}: ${localUrl} -> ${cloudinaryUrl}`);
         userUpdates++;
       }
       
-      // 查找包含本地URL的宠物
+      // Find pets containing local URL
       const pets = await Pet.find({ photos: { $regex: localUrl } });
       
       for (const pet of pets) {
@@ -167,45 +167,45 @@ async function updateDatabaseUrls() {
           photo.includes(localUrl) ? photo.replace(localUrl, cloudinaryUrl) : photo
         );
         await Pet.findByIdAndUpdate(pet._id, { photos: updatedPhotos });
-        console.log(`✓ 更新宠物 ${pet.name} 的照片URL: ${localUrl} -> ${cloudinaryUrl}`);
+        console.log(`✓ Updated photo URL for pet ${pet.name}: ${localUrl} -> ${cloudinaryUrl}`);
         petUpdates++;
       }
     }
     
-    console.log(`\n数据库URL更新完成!`);
-    console.log(`更新了 ${userUpdates} 个用户记录`);
-    console.log(`更新了 ${petUpdates} 个宠物记录`);
+    console.log(`\nDatabase URL update completed!`);
+    console.log(`Updated ${userUpdates} user records`);
+    console.log(`Updated ${petUpdates} pet records`);
     
   } catch (error) {
-    console.error('更新数据库URL过程中发生错误:', error.message);
+    console.error('Error during database URL update:', error.message);
   }
 }
 
 async function main() {
-  console.log('开始迁移本地上传文件到Cloudinary并更新数据库URL...\n');
+  console.log('Starting migration of locally uploaded files to Cloudinary and updating database URLs...\n');
   
-  // 连接数据库
+  // Connect to database
   await connectDB();
   
-  // 导入模型
+  // Import models
   await importModels();
   
-  // 迁移文件
+  // Migrate files
   const hasMigrated = await migrateFiles();
   
   if (hasMigrated) {
-    // 更新数据库URL
+    // Update database URLs
     await updateDatabaseUrls();
   }
   
-  // 断开数据库连接
+  // Close database connection
   await mongoose.connection.close();
   
-  console.log('\n所有操作完成!');
+  console.log('\nAll operations completed!');
 }
 
-// 执行主函数
+// Execute main function
 main().catch(error => {
-  console.error('执行过程中发生错误:', error);
+  console.error('Error during execution:', error);
   process.exit(1);
 });

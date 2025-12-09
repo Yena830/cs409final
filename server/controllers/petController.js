@@ -172,13 +172,13 @@ export const uploadPetPhoto = async (req, res) => {
       });
     }
 
-    // 根据存储类型构造图片URL
+    // Construct image URL based on storage type
     let photoUrl;
     if (useCloudinary && req.file.path) {
-      // Cloudinary直接返回path
+      // Cloudinary directly returns path
       photoUrl = req.file.path;
     } else if (!useCloudinary && req.file.filename) {
-      // 本地存储需要构造URL
+      // Local storage needs to construct URL
       const protocol = req.protocol || 'http';
       const host = req.get('host') || 'localhost:3001';
       photoUrl = `${protocol}://${host}/uploads/${req.file.filename}`;

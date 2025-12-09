@@ -217,22 +217,22 @@ class ApiClient {
     return this.post<Message>('/messages', { recipient, content });
   }
 
-  // 获取用户的所有对话列表
+  // Get all conversation lists for the user
   async getUserConversations(): Promise<ApiResponse<any[]>> {
     return this.get<any[]>('/messages/conversations');
   }
 
-  // 删除用户与特定用户的对话记录
+  // Delete conversation records between user and specific user
   async deleteConversation(userId: string): Promise<ApiResponse<any>> {
     return this.del<any>(`/messages/conversation/${userId}`);
   }
 
-  // 标记与特定用户的对话为已读
+  // Mark conversation with specific user as read
   async markConversationAsRead(userId: string): Promise<ApiResponse<any>> {
     return this.put<any>(`/messages/conversation/${userId}/read`, {});
   }
 
-  // 获取用户详细信息
+  // Get user details
   async getUserDetails(userId: string): Promise<ApiResponse<any>> {
     return this.get<any>(`/users/${userId}`);
   }

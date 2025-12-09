@@ -36,7 +36,7 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
   });
   const { login } = useUser();
 
-  // 密码验证函数
+  // Password validation function
   const validatePassword = (password: string): PasswordValidation => {
     return {
       minLength: password.length >= 8,
@@ -61,7 +61,7 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev: { name: string; email: string; password: string }) => ({ ...prev, [field]: value }));
     
-    // 如果是密码字段且不是登录模式，进行实时验证
+    // If password field and not in login mode, perform real-time validation
     if (field === 'password' && !isLogin) {
       const validation = validatePassword(value);
       setPasswordValidation(validation);
@@ -104,7 +104,7 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
       return;
     }
 
-    // 验证密码强度
+    // Validate password strength
     const validation = validatePassword(formData.password);
     if (!isPasswordValid(validation)) {
       toast.error('Password does not meet requirements. Please check the password requirements below.');

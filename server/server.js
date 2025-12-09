@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 3001;
 
 const server = http.createServer(app);
 
-// 初始化 Socket.IO，配置 CORS
+// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins, 
@@ -35,7 +35,7 @@ const io = new Server(server, {
   }
 });
 
-// 添加更多日志
+// Add more logging
 io.engine.on("connection_error", (err) => {
   console.log("Socket.IO connection error:", err);
 });
@@ -44,7 +44,7 @@ console.log("Socket.IO server initialized with CORS settings:", {
   origins: allowedOrigins
 });
 
-// 导出 io 实例，供其他模块使用
+// Export io instance for use by other modules
 export const getIO = () => io;
 
 // Middleware

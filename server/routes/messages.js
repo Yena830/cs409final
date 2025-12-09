@@ -85,7 +85,7 @@ router.get('/conversations', verifyToken, async (req, res) => {
     
     res.json({ success: true, data: conversations });
   } catch (error) {
-    console.error('获取对话列表错误:', error);
+    console.error('Error getting conversation list:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
