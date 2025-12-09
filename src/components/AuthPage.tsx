@@ -85,7 +85,13 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
         const { user, token } = response.data;
         login(user, token);
         toast.success('Welcome back!');
-        onNavigate('tasks');
+        
+        // Redirect to profile page based on user roles
+        if (user.roles.includes('helper')) {
+          onNavigate('helper-profile');
+        } else {
+          onNavigate('owner-profile');
+        }
       } else {
         // More specific feedback for invalid credentials
         toast.error('Email or password is incorrect');
@@ -129,7 +135,13 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
         const { user, token } = response.data;
         login(user, token);
         toast.success('Account created successfully!');
-        onNavigate('tasks');
+        
+        // Redirect to profile page based on user roles
+        if (user.roles.includes('helper')) {
+          onNavigate('helper-profile');
+        } else {
+          onNavigate('owner-profile');
+        }
       } else {
         toast.error(response.message || 'Registration failed');
       }
