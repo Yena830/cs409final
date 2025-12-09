@@ -26,6 +26,6 @@
       "sonner": ["./node_modules/sonner/dist/index.d.ts"]
     }
   },
-  "include": ["src", "src/env.d.ts"],
+  "include": ["src", "src/vite-env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

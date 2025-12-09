@@ -11,12 +11,16 @@ import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import { toast } from "sonner";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import defaultDog from "../assets/default-dog.jpg";
+import defaultCat from "../assets/default-cat.jpg";
+import defaultBird from "../assets/default-bird.jpg";
+import defaultRabbit from "../assets/default-rabbit.jpg";
 
 const DEFAULT_PET_IMAGES: Record<string, string> = {
-  dog: "https://placehold.co/600x400/FFB84D/FFFFFF?text=Dog",
-  cat: "https://placehold.co/600x400/FFB6C1/FFFFFF?text=Cat",
-  bird: "https://placehold.co/600x400/87CEEB/FFFFFF?text=Bird",
-  rabbit: "https://placehold.co/600x400/DDA0DD/FFFFFF?text=Rabbit",
+  dog: defaultDog,
+  cat: defaultCat,
+  bird: defaultBird,
+  rabbit: defaultRabbit,
   other: "https://placehold.co/600x400/98FB98/FFFFFF?text=Pet",
 };
 
