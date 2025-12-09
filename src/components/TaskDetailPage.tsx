@@ -3,13 +3,17 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Star, MapPin, Clock, Banknote, Shield, MessageCircle, ArrowLeft, Heart, Users, PawPrint, Briefcase } from "lucide-react";
+import { Star, MapPin, Clock, Banknote, Shield, MessageCircle, ArrowLeft, Heart, Users, Briefcase } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { api } from "../lib/api";
 import { useUser } from "../hooks/useUser";
 import { toast } from "sonner";
 import { ApplicantsDialog } from "./ApplicantsDialog";
 import { ReviewDialog } from "./ReviewDialog";
+import defaultDog from "../assets/default-dog.jpg";
+import defaultCat from "../assets/default-cat.jpg";
+import defaultBird from "../assets/default-bird.jpg";
+import defaultRabbit from "../assets/default-rabbit.jpg";
 
 interface TaskDetailPageProps {
   onNavigate: (page: string, params?: Record<string, any>) => void;
@@ -64,10 +68,10 @@ interface Task {
 
 
 const DEFAULT_PET_IMAGES: Record<string, string> = {
-  dog: "https://placehold.co/600x400/FFB84D/FFFFFF?text=Dog",
-  cat: "https://placehold.co/600x400/FFB6C1/FFFFFF?text=Cat",
-  bird: "https://placehold.co/600x400/87CEEB/FFFFFF?text=Bird",
-  rabbit: "https://placehold.co/600x400/DDA0DD/FFFFFF?text=Rabbit",
+  dog: defaultDog,
+  cat: defaultCat,
+  bird: defaultBird,
+  rabbit: defaultRabbit,
   other: "https://placehold.co/600x400/98FB98/FFFFFF?text=Pet",
 };
 
@@ -732,6 +736,50 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                             {task.pet.breed || task.pet.type}
                           </p>
                         </div>
+                        {(task.pet.height || task.pet.weight || task.pet.age || task.pet.gender || task.pet.notes) && (
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            {task.pet.height && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Height</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.height} in
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.weight && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Weight</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.weight} lbs
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.age && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Age</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.age} {task.pet.age === 1 ? 'year' : 'years'}
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.gender && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Gender</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.gender.charAt(0).toUpperCase() + task.pet.gender.slice(1)}
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.notes && (
+                              <div className="col-span-2">
+                                <div className="text-xs text-muted-foreground mb-1">Notes</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.notes}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Card>
