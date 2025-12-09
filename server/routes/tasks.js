@@ -34,8 +34,8 @@ router.post('/:id/complete', verifyToken, requireRole('helper'), completeTask);
 // POST /api/tasks/:id/confirm - Confirm task completion (owner only) - marks as completed
 router.post('/:id/confirm', verifyToken, requireRole('owner'), confirmTask);
 
-// POST /api/tasks/:id/cancel - Cancel task (owner only)
-router.post('/:id/cancel', verifyToken, requireRole('owner'), cancelTask);
+// POST /api/tasks/:id/cancel - Cancel task (owner or assigned helper)
+router.post('/:id/cancel', verifyToken, cancelTask);
 
 // POST /api/tasks/:id/review - Submit review for completed task (owner or helper)
 router.post('/:id/review', verifyToken, submitReview);

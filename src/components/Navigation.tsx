@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { MessageSquare, User, Heart, Home, ChevronDown, HelpCircle, PawPrint, LogOut } from "lucide-react";
+import logo from "../assets/logo.png";
+import { MessageSquare, User, Heart, Home, ChevronDown, HelpCircle, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,9 +33,13 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
       {showOnboarding && <OnboardingModal onClose={() => setShowOnboarding(false)} />}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-border">
       <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 cursor-pointer group" onClick={() => onNavigate('landing')}>
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-            <PawPrint className="w-5 h-5 text-white fill-white" />
+        <div className="flex items-center gap-4 cursor-pointer group" onClick={() => onNavigate('landing')}>
+          <div className="w-14 h-14 flex items-center justify-center">
+            <img
+              src={logo}
+              alt="PawfectMatch"
+              className="w-12 h-12 object-cover rounded-full"
+            />
           </div>
           <span 
             className="tracking-tight" 

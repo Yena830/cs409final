@@ -453,8 +453,9 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
     }
   };
 
-  const isTaskOwner = task && user && task.postedBy?._id === user._id;
-  const isTaskHelper = task && user && task.assignedTo?._id === user._id;
+  const isTaskOwner = task && user && (task.postedBy?._id?.toString?.() || task.postedBy?._id || task.postedBy)?.toString() === user._id;
+  const isTaskHelper = task && user && (task.assignedTo?._id?.toString?.() || task.assignedTo?._id || task.assignedTo)?.toString() === user._id;
+  const isTaskApplicant = task && user && task.applicants?.some(app => (app?._id?.toString?.() || app?._id || app)?.toString() === user._id);
   const hasApplied = task?.applicants?.some(app => app._id === user?._id);
 
   const handleSubmitReview = async (rating: number, comment: string, revieweeId: string, taskId: string) => {
@@ -839,8 +840,8 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                     </>
                   )}
 
-                  {/* Cancel Task (owner) */}
-                  {isTaskOwner && task.status !== "completed" && task.status !== "cancelled" && (
+                  {/* Cancel Task (owner, assigned helper, or applicant) */}
+                  {(isTaskOwner || isTaskHelper || isTaskApplicant) && task.status !== "completed" && task.status !== "cancelled" && (
                     <Button
                       variant="outline"
                       className="w-full border-red-500 text-red-600 hover:bg-red-50"

@@ -403,7 +403,7 @@ export const confirmTask = async (req, res) => {
   }
 };
 
-// Cancel task (owner only)
+// Cancel task (owner or assigned helper)
 export const cancelTask = async (req, res) => {
   try {
     const { id } = req.params;
@@ -417,11 +417,36 @@ export const cancelTask = async (req, res) => {
       });
     }
 
-    // Only the task owner can cancel
-    if (task.postedBy.toString() !== userId.toString()) {
+    const userIdStr = userId.toString();
+    const postedById = task.postedBy?.toString();
+    const assignedToId = task.assignedTo?._id
+      ? task.assignedTo._id.toString()
+      : task.assignedTo?.toString();
+    const applicantsIds = Array.isArray(task.applicants)
+      ? task.applicants.map(a => (a?._id ? a._id.toString() : a?.toString()))
+      : [];
+
+    const isOwner = postedById === userIdStr;
+    const isAssignedHelper = assignedToId === userIdStr;
+    const isApplicant = applicantsIds.includes(userIdStr);
+
+    console.log('cancelTask auth check:', {
+      taskId: id,
+      status: task.status,
+      userId: userIdStr,
+      postedById,
+      assignedToId,
+      applicantsIds,
+      isOwner,
+      isAssignedHelper,
+      isApplicant,
+    });
+
+    // Only the task owner, assigned helper, or an applicant can cancel
+    if (!isOwner && !isAssignedHelper && !isApplicant) {
       return res.status(403).json({
         success: false,
-        message: 'Only the task owner can cancel this task',
+        message: 'Only the task owner or participating helper can cancel this task',
       });
     }
 
