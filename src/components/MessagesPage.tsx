@@ -315,23 +315,34 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         });
         
         // If currently viewing this conversation, add message to chat
-        if (selectedConversation && selectedConversation.participantId === message.sender._id) {
-          setSelectedConversation(prev => {
-            if (prev) {
-              return {
-                ...prev,
-                messages: [...prev.messages, message]
-              };
-            }
-            return prev;
-          });
+        // Fixed: Use selectedChat instead of selectedConversation for comparison
+        if (selectedChat) {
+          // Find the conversation that corresponds to the received message
+          const currentConversations = [...conversations];
+          const conversation = currentConversations.find(c => c._id === selectedChat);
           
-          // Mark as read since we're viewing the conversation
-          setConversations(prev => prev.map(conv => 
-            conv.participantId === message.sender._id 
-              ? { ...conv, hasUnread: false } 
-              : conv
-          ));
+          if (conversation && conversation.participantId === message.sender._id) {
+            console.log("Adding received message to current conversation");
+            setSelectedConversation(prev => {
+              if (prev) {
+                console.log("Previous message count:", prev.messages.length);
+                const updatedMessages = [...prev.messages, message];
+                console.log("Updated message count:", updatedMessages.length);
+                return {
+                  ...prev,
+                  messages: updatedMessages
+                };
+              }
+              return prev;
+            });
+            
+            // Mark as read since we're viewing the conversation
+            setConversations(prev => prev.map(conv => 
+              conv.participantId === message.sender._id 
+                ? { ...conv, hasUnread: false } 
+                : conv
+            ));
+          }
         }
         
         // Scroll to bottom of messages
@@ -372,16 +383,19 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         });
         
         // If currently viewing this conversation, add message to chat
-        if (selectedConversation && selectedConversation.participantId === message.recipient._id) {
-          setSelectedConversation(prev => {
-            if (prev) {
-              return {
-                ...prev,
-                messages: [...prev.messages, message]
-              };
-            }
-            return prev;
-          });
+        if (selectedChat && selectedConversation) {
+          // Check if the sent message belongs to the currently viewed conversation
+          if (selectedConversation.participantId === message.recipient._id) {
+            setSelectedConversation(prev => {
+              if (prev) {
+                return {
+                  ...prev,
+                  messages: [...prev.messages, message]
+                };
+              }
+              return prev;
+            });
+          }
         }
         
         // Scroll to bottom of messages
@@ -501,11 +515,13 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
       if (!conversation || !isMounted) return;
       
       try {
+        console.log("Loading messages for conversation:", conversation.participantId);
         // Fetch real message history from API
         const response = await api.getConversation(conversation.participantId);
         if (response.success && response.data && isMounted) {
           // Only update state if the currently selected chat is still this conversation
           if (selectedChat === conversation._id) {
+            console.log("Setting conversation messages:", response.data.length);
             setSelectedConversation({
               ...conversation,
               messages: response.data
@@ -536,18 +552,38 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     return () => {
       isMounted = false;
     };
-  }, [selectedChat, user?._id]);
+  }, [selectedChat, user?._id, conversations]); // Added conversations as dependency to ensure updates
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Improved scroll to bottom with better timing
   useEffect(() => {
-    scrollToBottom();
+    // Add a small delay to ensure DOM is updated before scrolling
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [selectedConversation?.messages]);
+  
+  // Additional scroll effect for when messages are updated via WebSocket
+  useEffect(() => {
+    // When we receive a new message via WebSocket, scroll to bottom after a short delay
+    // to ensure the DOM has updated
+    if (selectedConversation?.messages && selectedConversation.messages.length > 0) {
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversation?.messages?.length]); // Depend on message count to trigger on new messages
 
   const handleSendMessage = async () => {
     if (message.trim() && user && selectedConversation) {
+      console.log("Sending message:", message.trim());
       try {
         // Prepare message data
         const messageData = {
@@ -566,6 +602,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         
         // Send message through WebSocket if connected, otherwise use API
         if (socketRef.current && socketRef.current.connected) {
+          console.log("Sending via WebSocket to:", selectedConversation.participantId);
           // Emit message through WebSocket
           socketRef.current.emit('send_message', messageData);
           
@@ -588,6 +625,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           // Update conversation messages
           setSelectedConversation(prev => {
             if (prev) {
+              console.log("Updating conversation messages, current count:", prev.messages.length);
               return {
                 ...prev,
                 messages: [...prev.messages, newMessage],
