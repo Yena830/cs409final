@@ -718,7 +718,7 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                   <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
                     <h3 className="mb-4" style={{ fontWeight: 600 }}>Pet Information</h3>
                     <div className="flex gap-6 flex-1">
-                      <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0">
+                      <div className="w-48 h-48 rounded-2xl overflow-hidden shrink-0">
                         <ImageWithFallback
                           src={petImage}
                           alt={task.pet.name}
@@ -947,7 +947,7 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                   <Card className="lg:col-span-2 p-6 border-0 shadow-md h-full flex flex-col">
                     <h3 className="mb-4" style={{ fontWeight: 600 }}>Pet Information</h3>
                     <div className="flex gap-6 flex-1">
-                      <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0">
+                      <div className="w-48 h-48 rounded-2xl overflow-hidden shrink-0">
                         <ImageWithFallback
                           src={petImage}
                           alt={task.pet.name}
