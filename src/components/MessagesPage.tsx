@@ -322,12 +322,9 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           const conversation = currentConversations.find(c => c._id === selectedChat);
           
           if (conversation && conversation.participantId === message.sender._id) {
-            // console.log("Adding received message to current conversation");
             setSelectedConversation(prev => {
               if (prev) {
-                // console.log("Previous message count:", prev.messages.length);
                 const updatedMessages = [...prev.messages, message];
-                // console.log("Updated message count:", updatedMessages.length);
                 return {
                   ...prev,
                   messages: updatedMessages
@@ -345,12 +342,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           }
         }
         
-        // Scroll to bottom of messages
-        setTimeout(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 100);
+        // Remove auto-scroll on message receipt to allow users to scroll freely
       });
       
       // Listen for message sent confirmation
@@ -387,15 +379,12 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         if (selectedChat && selectedConversation) {
           // Check if the sent message belongs to the currently viewed conversation
           if (selectedConversation.participantId === message.recipient._id) {
-            // console.log("Adding sent message confirmation to current conversation");
             setSelectedConversation(prev => {
               if (prev) {
-                // console.log("Previous message count (confirmation):", prev.messages.length);
                 // Check if this message is already in the list (to avoid duplicates)
                 const messageExists = prev.messages.some(msg => msg._id === message._id);
                 if (!messageExists) {
                   const updatedMessages = [...prev.messages, message];
-                  // console.log("Updated message count (confirmation):", updatedMessages.length);
                   return {
                     ...prev,
                     messages: updatedMessages
@@ -407,12 +396,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           }
         }
         
-        // Scroll to bottom of messages
-        setTimeout(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 100);
+        // Remove auto-scroll on message receipt to allow users to scroll freely
       });
       
       // Cleanup function
@@ -530,7 +514,6 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         if (response.success && response.data && isMounted) {
           // Only update state if the currently selected chat is still this conversation
           if (selectedChat === conversation._id) {
-            // console.log("Setting conversation messages:", response.data.length);
             setSelectedConversation({
               ...conversation,
               messages: response.data
@@ -563,36 +546,21 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
     };
   }, [selectedChat, user?._id, conversations]); // Added conversations as dependency to ensure updates
 
+  // Only scroll to bottom when user sends a message
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // Improved scroll to bottom with better timing
-  useEffect(() => {
-    // Add a small delay to ensure DOM is updated before scrolling
-    const timer = setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [selectedConversation?.messages]);
-  
-  // Additional scroll effect for when messages are updated via WebSocket
-  useEffect(() => {
-    // When we receive a new message via WebSocket, scroll to bottom after a short delay
-    // to ensure the DOM has updated
-    if (selectedConversation?.messages && selectedConversation.messages.length > 0) {
-      const timer = setTimeout(() => {
-        scrollToBottom();
-      }, 50);
-      
-      return () => clearTimeout(timer);
+    // Scroll the messages container to the bottom
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer && messagesEndRef.current) {
+      // Add a small delay to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current!.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 100);
     }
-  }, [selectedConversation?.messages?.length]); // Depend on message count to trigger on new messages
-
+  };
+  
+  // Handle sending a new message
   const handleSendMessage = async () => {
     if (message.trim() && user && selectedConversation) {
-      // console.log("Sending message:", message.trim());
       try {
         // Prepare message data
         const messageData = {
@@ -611,7 +579,6 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
         
         // Send message through WebSocket if connected, otherwise use API
         if (socketRef.current && socketRef.current.connected) {
-          // console.log("Sending via WebSocket to:", selectedConversation.participantId);
           // Emit message through WebSocket
           socketRef.current.emit('send_message', messageData);
           
@@ -634,7 +601,6 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
           // Update conversation messages
           setSelectedConversation(prev => {
             if (prev) {
-              // console.log("Updating conversation messages, current count:", prev.messages.length);
               return {
                 ...prev,
                 messages: [...prev.messages, newMessage],
@@ -655,6 +621,9 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
               timestamp: newMessage.timestamp
             } : conv
           ));
+          
+          // Scroll to bottom only when user sends a message
+          scrollToBottom();
           
           // Clear input field
           setMessage("");
@@ -691,6 +660,9 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                 timestamp: newMessage.timestamp
               } : conv
             ));
+            
+            // Scroll to bottom only when user sends a message
+            scrollToBottom();
             
             setMessage("");
           }
@@ -960,7 +932,9 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-secondary/5 to-white">
+                  <div 
+                    className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-secondary/5 to-white messages-container"
+                  >
                     <div className="flex justify-center mb-4">
                       <div className="bg-secondary/50 rounded-full px-4 py-1.5">
                         <p className="text-xs text-muted-foreground">Today</p>
@@ -1004,7 +978,7 @@ export function MessagesPage({ onNavigate, selectedUserId }: MessagesPageProps) 
                         </div>
                       );
                     })}
-                    <div ref={messagesEndRef} />
+                    <div ref={messagesEndRef} style={{ height: "1px" }} />
                   </div>
                   
                   {/* Message Input */}
