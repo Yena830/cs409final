@@ -219,7 +219,9 @@ const seed = async () => {
           breed,
           height: type === 'dog' ? Math.floor(Math.random() * 12) + 8 : Math.floor(Math.random() * 6) + 6, // 8-20 inches for dogs, 6-12 for cats
           weight: type === 'dog' ? Math.floor(Math.random() * 60) + 15 : Math.floor(Math.random() * 10) + 5, // 15-75 lbs for dogs, 5-15 lbs for cats
-          temperament: randomItem(['Friendly', 'Playful', 'Calm', 'Energetic', 'Gentle', 'Loving', 'Independent', 'Curious']),
+          age: Math.floor(Math.random() * 15) + 1, // 1-15 years
+          gender: randomItem(['male', 'female', 'other']),
+          notes: randomItem(['Friendly and playful', 'Calm and gentle', 'Energetic and loves to play', 'Gentle and loving', 'Independent but affectionate', 'Curious and adventurous', 'Great with kids', 'Needs daily exercise']),
           photos,
           owner: owner._id,
         });

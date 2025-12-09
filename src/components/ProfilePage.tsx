@@ -47,7 +47,9 @@ interface Pet {
   breed?: string;
   height?: number;
   weight?: number;
-  temperament?: string;
+  age?: number;
+  gender?: string;
+  notes?: string;
   photos?: string[];
   owner: string;
 }
@@ -124,7 +126,9 @@ interface BackendPet {
   breed?: string;
   height?: number;
   weight?: number;
-  temperament?: string;
+  age?: number;
+  gender?: string;
+  notes?: string;
   photos?: string[];
   owner?: string;
 }
@@ -1147,10 +1151,12 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                             {pet.height && <span>Height: {pet.height} in</span>}
                             {pet.weight && <span>Weight: {pet.weight} lbs</span>}
+                            {pet.age && <span>Age: {pet.age} {pet.age === 1 ? 'year' : 'years'}</span>}
+                            {pet.gender && <span>Gender: {pet.gender.charAt(0).toUpperCase() + pet.gender.slice(1)}</span>}
                           </div>
-                          {pet.temperament && (
+                          {pet.notes && (
                             <p className="text-sm text-muted-foreground line-clamp-2">
-                              {pet.temperament}
+                              {pet.notes}
                             </p>
                           )}
                         </div>

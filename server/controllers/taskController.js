@@ -67,7 +67,7 @@ export const createTask = async (req, res) => {
 
     // Populate and return
     const populatedTask = await Task.findById(task._id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -96,7 +96,7 @@ export const createTask = async (req, res) => {
 export const getAllTasks = async (req, res) => {
   try {
     const tasks = await Task.find()
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto')
@@ -120,7 +120,7 @@ export const getTaskById = async (req, res) => {
     const { id } = req.params;
 
     const task = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -212,7 +212,7 @@ export const applyToTask = async (req, res) => {
 
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -278,7 +278,7 @@ export const assignHelper = async (req, res) => {
 
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -332,7 +332,7 @@ export const completeTask = async (req, res) => {
 
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto rating')
       .populate('assignedTo', 'name profilePhoto rating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -386,7 +386,7 @@ export const confirmTask = async (req, res) => {
 
     // Populate and return updated task
     const updatedTask = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio expectedHourlyRate');
@@ -479,7 +479,7 @@ export const cancelTask = async (req, res) => {
       });
 
       const updatedTask = await Task.findById(id)
-        .populate('pet', 'name type photos')
+        .populate('pet', 'name type breed age gender height weight notes photos')
         .populate('postedBy', 'name profilePhoto ownerRating')
         .populate('assignedTo', 'name profilePhoto helperRating')
         .populate('applicants', 'name profilePhoto helperRating location specialties bio');
@@ -504,7 +504,7 @@ export const cancelTask = async (req, res) => {
     await task.save();
 
     const updatedTask = await Task.findById(id)
-      .populate('pet', 'name type photos')
+      .populate('pet', 'name type breed age gender height weight notes photos')
       .populate('postedBy', 'name profilePhoto ownerRating')
       .populate('assignedTo', 'name profilePhoto helperRating')
       .populate('applicants', 'name profilePhoto helperRating location specialties bio');

@@ -34,6 +34,11 @@ interface Task {
     name: string;
     type: string;
     breed?: string;
+    height?: number;
+    weight?: number;
+    age?: number;
+    gender?: string;
+    notes?: string;
     photos?: string[];
   };
   postedBy?: {
@@ -956,6 +961,50 @@ export function TaskDetailPage({ taskId, onNavigate, returnTo, activeTab }: Task
                             {task.pet.breed || task.pet.type}
                           </p>
                         </div>
+                        {(task.pet.height || task.pet.weight || task.pet.age || task.pet.gender || task.pet.notes) && (
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            {task.pet.height && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Height</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.height} in
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.weight && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Weight</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.weight} lbs
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.age && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Age</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.age} {task.pet.age === 1 ? 'year' : 'years'}
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.gender && (
+                              <div>
+                                <div className="text-xs text-muted-foreground">Gender</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.gender.charAt(0).toUpperCase() + task.pet.gender.slice(1)}
+                                </div>
+                              </div>
+                            )}
+                            {task.pet.notes && (
+                              <div className="col-span-2">
+                                <div className="text-xs text-muted-foreground mb-1">Notes</div>
+                                <div className="text-sm" style={{ fontWeight: 600 }}>
+                                  {task.pet.notes}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Card>

@@ -16,13 +16,20 @@ const petSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    age: {
+      type: Number,
+    },
+    gender: {
+      type: String,
+      trim: true,
+    },
     height: {
       type: Number,
     },
     weight: {
       type: Number,
     },
-    temperament: {
+    notes: {
       type: String,
       trim: true,
     },
