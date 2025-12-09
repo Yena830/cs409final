@@ -136,12 +136,8 @@ export function AuthPage({ onNavigate }: AuthPageProps) {
         login(user, token);
         toast.success('Account created successfully!');
         
-        // Redirect to profile page based on user roles
-        if (user.roles.includes('helper')) {
-          onNavigate('helper-profile');
-        } else {
-          onNavigate('owner-profile');
-        }
+        // Redirect to home page after successful registration
+        onNavigate('landing');
       } else {
         toast.error(response.message || 'Registration failed');
       }
