@@ -563,6 +563,21 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
     setPetFormOpen(true);
   };
 
+  const handleDeletePet = async (petId: string) => {
+    if (!petId) return;
+    try {
+      const response = await api.del(`/pets/${petId}`);
+      if (response.success) {
+        toast.success("Pet deleted successfully");
+        await loadPets();
+      } else {
+        toast.error(response.message || "Failed to delete pet");
+      }
+    } catch (error) {
+      toast.error("Failed to delete pet");
+    }
+  };
+
   const handleSaveHelperDetails = async (data: HelperDetails) => {
     if (!user || !user._id) {
       toast.error('User not found');
@@ -1113,7 +1128,7 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {myPets.map((pet) => (
-                    <Card key={pet._id} className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-shadow">
+                    <Card key={pet._id} className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-shadow flex flex-col h-full">
                       <div className="aspect-square relative overflow-hidden">
                         <ImageWithFallback
                           src={
@@ -1123,28 +1138,39 @@ export function ProfilePage({ onNavigate, userType = 'owner', activeTab: initial
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="p-5">
-                        <h3 className="mb-1" style={{ fontWeight: 600 }}>{pet.name}</h3>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {pet.breed || pet.type}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mb-3">
-                          {pet.height && <span>Height: {pet.height} in</span>}
-                          {pet.weight && <span>Weight: {pet.weight} lbs</span>}
-                        </div>
-                        {pet.temperament && (
-                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {pet.temperament}
+                      <div className="p-5 flex flex-col flex-1 justify-between">
+                        <div className="space-y-2">
+                          <h3 className="mb-1" style={{ fontWeight: 600 }}>{pet.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {pet.breed || pet.type}
                           </p>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => handleEditPet(pet)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
+                          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                            {pet.height && <span>Height: {pet.height} in</span>}
+                            {pet.weight && <span>Weight: {pet.weight} lbs</span>}
+                          </div>
+                          {pet.temperament && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {pet.temperament}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <Button 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={() => handleEditPet(pet)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => handleDeletePet(pet._id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
