@@ -18,7 +18,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",               
   "https://cs409final-alpha.vercel.app",
-  "https://pawfectmatch-cs409.vercel.app"  
+  "https://pawfectmatch-cs409.vercel.app",
+  "https://cs409final-2x1yni7ud-pawfects-projects.vercel.app"
 ];
 
 const app = express();
