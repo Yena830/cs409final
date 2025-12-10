@@ -131,13 +131,27 @@ router.get('/:id/reviews', async (req, res) => {
     }
 
     // Clean up task data for response (only send title, not full task object)
-    const cleanedReviews = reviews.map(review => ({
-      ...review.toObject(),
-      task: {
-        _id: review.task._id,
-        title: review.task.title,
-      },
-    }));
+    const cleanedReviews = reviews.map(review => {
+      // Handle case where reviewer might be null
+      const reviewerData = review.reviewer ? {
+        _id: review.reviewer._id,
+        name: review.reviewer.name,
+        profilePhoto: review.reviewer.profilePhoto
+      } : {
+        _id: null,
+        name: "Unknown User",
+        profilePhoto: null
+      };
+      
+      return {
+        ...review.toObject(),
+        reviewer: reviewerData,
+        task: {
+          _id: review.task._id,
+          title: review.task.title,
+        },
+      };
+    });
 
     res.json({
       success: true,

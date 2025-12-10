@@ -447,18 +447,18 @@ export function HelperPublicProfilePage({ onNavigate, userId, helperId, viewRole
                 <Card key={review._id} className="p-6 border-0 shadow-md">
                   <div className="flex items-start gap-4">
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src={review.reviewer.profilePhoto} alt={review.reviewer.name} />
+                      <AvatarImage src={review.reviewer?.profilePhoto} alt={review.reviewer?.name} />
                       <AvatarFallback className="bg-primary text-white">
-                        {review.reviewer.name.substring(0, 2).toUpperCase()}
+                        {review.reviewer?.name?.substring(0, 2).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 style={{ fontWeight: 600 }}>{review.reviewer.name}</h4>
+                            <h4 style={{ fontWeight: 600 }}>{review.reviewer?.name || "Unknown User"}</h4>
                             <span className="text-sm text-muted-foreground">
-                              for "{review.task.title}"
+                              for "{review.task?.title || "Unknown Task"}"
                             </span>
                           </div>
                           <div className="flex items-center gap-1">
